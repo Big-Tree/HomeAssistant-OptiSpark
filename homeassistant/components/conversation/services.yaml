@@ -1,0 +1,27 @@
+# Describes the format for available component services
+process:
+  fields:
+    text:
+      example: Turn all lights on
+      required: true
+      selector:
+        text:
+    language:
+      example: NL
+      selector:
+        text:
+    agent_id:
+      example: homeassistant
+      selector:
+        conversation_agent:
+
+reload:
+  fields:
+    language:
+      example: NL
+      selector:
+        text:
+    agent_id:
+      example: homeassistant
+      selector:
+        conversation_agent:

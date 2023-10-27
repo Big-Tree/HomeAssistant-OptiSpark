@@ -1,0 +1,27 @@
+clear_traffic_statistics:
+  fields:
+    url:
+      example: http://192.168.100.1/
+      selector:
+        text:
+
+reboot:
+  fields:
+    url:
+      example: http://192.168.100.1/
+      selector:
+        text:
+
+resume_integration:
+  fields:
+    url:
+      example: http://192.168.100.1/
+      selector:
+        text:
+
+suspend_integration:
+  fields:
+    url:
+      example: http://192.168.100.1/
+      selector:
+        text:

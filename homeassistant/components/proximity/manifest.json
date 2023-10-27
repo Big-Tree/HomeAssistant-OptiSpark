@@ -1,0 +1,9 @@
+{
+  "domain": "proximity",
+  "name": "Proximity",
+  "codeowners": [],
+  "dependencies": ["device_tracker", "zone"],
+  "documentation": "https://www.home-assistant.io/integrations/proximity",
+  "iot_class": "calculated",
+  "quality_scale": "internal"
+}
