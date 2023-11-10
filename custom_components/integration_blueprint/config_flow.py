@@ -28,49 +28,45 @@ class BlueprintFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow initialized by the user."""
         _errors = {}
         if user_input is not None:
-            try:
-                await self._test_credentials(
-                    username=user_input[CONF_USERNAME],
-                    password=user_input[CONF_PASSWORD],
-                )
-            except IntegrationBlueprintApiClientAuthenticationError as exception:
-                LOGGER.warning(exception)
-                _errors["base"] = "auth"
-            except IntegrationBlueprintApiClientCommunicationError as exception:
-                LOGGER.error(exception)
-                _errors["base"] = "connection"
-            except IntegrationBlueprintApiClientError as exception:
-                LOGGER.exception(exception)
-                _errors["base"] = "unknown"
-            else:
-                return self.async_create_entry(
-                    title=user_input[CONF_USERNAME],
-                    data=user_input,
-                )
+            # Process the data
+            pass
+            await self._test_credentials(
+                postcode=user_input['postcode'],
+            )
+            return self.async_create_entry(
+                title=user_input['postcode'],
+                data=user_input,
+            )
+            #except IntegrationBlueprintApiClientAuthenticationError as exception:
+            #    LOGGER.warning(exception)
+            #    _errors["base"] = "auth"
+            #except IntegrationBlueprintApiClientCommunicationError as exception:
+            #    LOGGER.error(exception)
+            #    _errors["base"] = "connection"
+            #except IntegrationBlueprintApiClientError as exception:
+            #    LOGGER.exception(exception)
+            #    _errors["base"] = "unknown"
+            #else:
+            #    return self.async_create_entry(
+            #        title=user_input[CONF_USERNAME],
+            #        data=user_input,
+            #    )
 
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        CONF_USERNAME,
-                        default=(user_input or {}).get(CONF_USERNAME),
-                    ): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.TEXT
-                        ),
-                    ),
-                    vol.Required(CONF_PASSWORD): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.PASSWORD
-                        ),
-                    ),
+                    vol.Required('postcode'): str,
                 }
             ),
             errors=_errors,
         )
 
-    async def _test_credentials(self, username: str, password: str) -> None:
+    async def _test_credentials(self, postcode: str) -> None:
+        """Validate credentials."""
+        pass
+
+    async def _test_credentials_old(self, username: str, password: str) -> None:
         """Validate credentials."""
         client = IntegrationBlueprintApiClient(
             username=username,

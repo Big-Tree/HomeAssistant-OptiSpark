@@ -48,3 +48,14 @@ class IntegrationBlueprintBinarySensor(IntegrationBlueprintEntity, BinarySensorE
     def is_on(self) -> bool:
         """Return true if the binary_sensor is on."""
         return self.coordinator.data.get("title", "") == "foo"
+
+    @property
+    def unique_id(self):
+        return 'sensor_id_binary'
+
+    #@property
+    #def device_info(self):
+    #    """Return device information."""
+    #    return {
+    #        "identifiers": {("optispark_integration", "optispark_device_id")},
+    #    }

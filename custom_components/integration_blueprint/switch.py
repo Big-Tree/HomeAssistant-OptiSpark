@@ -54,3 +54,14 @@ class IntegrationBlueprintSwitch(IntegrationBlueprintEntity, SwitchEntity):
         """Turn off the switch."""
         await self.coordinator.api.async_set_title("foo")
         await self.coordinator.async_request_refresh()
+
+    @property
+    def unique_id(self):
+        return 'sensor_id_switch'
+
+    #@property
+    #def device_info(self):
+    #    """Return device information."""
+    #    return {
+    #        "identifiers": {("optispark_integration", "optispark_device_id")},
+    #    }
