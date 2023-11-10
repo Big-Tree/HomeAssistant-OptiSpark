@@ -58,7 +58,7 @@ class BlueprintDataUpdateCoordinator(DataUpdateCoordinator):
         )
         self.results = {}
         self.last_update_time = 0
-        self.update_lambda_interval = 300
+        self.update_lambda_interval = 60*60
 
     async def _async_update_data(self):
         """Update data via library."""
