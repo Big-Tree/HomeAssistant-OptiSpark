@@ -1,4 +1,4 @@
-"""Sensor platform for integration_blueprint."""
+"""Sensor platform for optispark."""
 from __future__ import annotations
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
@@ -20,22 +20,22 @@ def random_uuid_hex() -> str:
 
 ENTITY_DESCRIPTIONS = (
     SensorEntityDescription(
-        key="integration_blueprint",
+        key="optispark",
         name="Base Demand",
         icon="mdi:format-quote-close",
     ),
     SensorEntityDescription(
-        key="integration_blueprint_second",
+        key="optispark_second",
         name="Optimised Demand",
         icon="mdi:format-quote-close",
     ),
     SensorEntityDescription(
-        key="integration_blueprint_third",
+        key="optispark_third",
         name="Price",
         icon="mdi:format-quote-close",
     ),
     SensorEntityDescription(
-        key="integration_blueprint_fourth",
+        key="optispark_fourth",
         name="House Temp",
         icon="mdi:format-quote-close",
     ),
@@ -73,7 +73,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
 
 class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
-    """integration_blueprint Sensor class."""
+    """optispark Sensor class."""
     #_attr_has_entity_name = True
 
     #@property
