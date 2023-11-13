@@ -1140,7 +1140,7 @@ ld2410-ble==0.1.1
 led-ble==1.0.1
 
 # homeassistant.components.foscam
-libpyfoscam==1.0
+libpyfoscam==1.2.2
 
 # homeassistant.components.vivotek
 libpyvivotek==0.4.0
@@ -1503,7 +1503,7 @@ pushbullet.py==0.11.0
 pushover_complete==1.1.1
 
 # homeassistant.components.pvoutput
-pvo==2.0.0
+pvo==2.1.0
 
 # homeassistant.components.canary
 py-canary==0.5.3
@@ -2310,7 +2310,7 @@ rapt-ble==0.1.2
 raspyrfm-client==1.2.8
 
 # homeassistant.components.rainmachine
-regenmaschine==2023.06.0
+regenmaschine==2023.8.0
 
 # homeassistant.components.renault
 renault-api==0.2.0
