@@ -29,17 +29,39 @@ class IntegrationBlueprintApiClient:
 
     def __init__(
         self,
-        username: str,
-        password: str,
+        postcode: str,
+        #username: str,
+        #password: str,
         session: aiohttp.ClientSession,
     ) -> None:
         """Sample API Client."""
-        self._username = username
-        self._password = password
+        #self._username = username
+        #self._password = password
         self._session = session
 
     async def async_get_data(self) -> any:
         """Get data from the API."""
+        args = {}
+        args['house_type'] = 2
+        args['set_point'] = 20.0
+        args['temp_range'] = 3.0
+        args['postcode'] = 'SW118DD'
+
+        lambda_url = 'https://pkgy5zrwinj2mcxerishahglvi0hfoqh.lambda-url.eu-west-2.on.aws/0.00001666670.0000166667'
+        #results, errors = json.loads(response.text)
+
+        results = await self._api_wrapper(
+            method="post",
+            url=lambda_url,
+            data=args,
+            headers={"Content-type": "application/json; charset=UTF-8"},
+        )
+        print('----------Lambda request----------')
+        return results[0]
+
+
+
+
         return await self._api_wrapper(
             method="get", url="https://jsonplaceholder.typicode.com/posts/1"
         )
@@ -62,11 +84,11 @@ class IntegrationBlueprintApiClient:
     ) -> any:
         """Get information from the API."""
         try:
-            async with async_timeout.timeout(10):
+            async with async_timeout.timeout(40):
                 response = await self._session.request(
                     method=method,
                     url=url,
-                    headers=headers,
+                    #headers=headers,
                     json=data,
                 )
                 if response.status in (401, 403):
