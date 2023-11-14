@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 
-from .const import DOMAIN
 from .coordinator import BlueprintDataUpdateCoordinator
 from .entity import IntegrationBlueprintEntity
 
@@ -19,6 +18,7 @@ ENTITY_DESCRIPTIONS = (
 
 
 def get_closest_time(times_str: list[str]):
+    """Get the closest matching time to now from the input data."""
     # Convert time to dattime format
     times = [datetime.strptime(d, '%Y-%m-%d %H:%M') for d in times_str]
     now = datetime.now()
@@ -28,8 +28,8 @@ def get_closest_time(times_str: list[str]):
     return times_str[min_idx]
 
 async def async_setup_entry(hass, entry, async_add_devices):
+    """Set up the sensor platform."""
     pass
-    #"""Set up the sensor platform."""
     #coordinator = hass.data[DOMAIN][entry.entry_id]
     #async_add_devices(
     #    IntegrationBlueprintSensor(
@@ -66,12 +66,13 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
         #base_demand_now = data['base_demand'][closest_time]
         #return base_demand_now
 
-        import time
-        out = time.clock_gettime(0)
+        #import time
+        #out = time.clock_gettime(0)
         return 5
 
     @property
     def unique_id(self):
+        """Return unique id for the sensor."""
         return 'sensor_id_number'
 
     #@property

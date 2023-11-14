@@ -11,6 +11,8 @@ import subprocess
 from .const import CLI_2_DOCKER_IMAGE, CORE_PROJECT_ID, INTEGRATIONS_DIR
 from .error import ExitApp
 from .util import get_lokalise_token, load_json_from_path
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
 
 FILENAME_FORMAT = re.compile(r"strings\.(?P<suffix>\w+)\.json")
 DOWNLOAD_DIR = pathlib.Path("build/translations-download").absolute()
@@ -18,7 +20,7 @@ DOWNLOAD_DIR = pathlib.Path("build/translations-download").absolute()
 
 def run_download_docker():
     """Run the Docker image to download the translations."""
-    print("Running Docker to download latest translations.")
+    LOGGER.info("Running Docker to download latest translations.")
     run = subprocess.run(
         [
             "docker",
@@ -47,7 +49,7 @@ def run_download_docker():
         ],
         check=False,
     )
-    print()
+    LOGGER.info()
 
     if run.returncode != 0:
         raise ExitApp("Failed to download translations")
@@ -100,7 +102,7 @@ def save_language_translations(lang, translations):
         base_translations = get_component_translations(component_translations)
         if base_translations:
             if (path := get_component_path(lang, component)) is None:
-                print(
+                LOGGER.warn(
                     f"Skipping {lang} for {component}, as the integration doesn't seem to exist."
                 )
                 continue

@@ -6,37 +6,34 @@ import socket
 
 import aiohttp
 import async_timeout
+from .const import LOGGER
 
 
-class IntegrationBlueprintApiClientError(Exception):
+class OptisparkApiClientError(Exception):
     """Exception to indicate a general API error."""
 
 
-class IntegrationBlueprintApiClientCommunicationError(
-    IntegrationBlueprintApiClientError
+class OptisparkApiClientCommunicationError(
+    OptisparkApiClientError
 ):
     """Exception to indicate a communication error."""
 
 
-class IntegrationBlueprintApiClientAuthenticationError(
-    IntegrationBlueprintApiClientError
+class OptisparkApiClientAuthenticationError(
+    OptisparkApiClientError
 ):
     """Exception to indicate an authentication error."""
 
 
-class IntegrationBlueprintApiClient:
+class OptisparkApiClient:
     """Sample API Client."""
 
     def __init__(
         self,
         postcode: str,
-        #username: str,
-        #password: str,
         session: aiohttp.ClientSession,
     ) -> None:
         """Sample API Client."""
-        #self._username = username
-        #self._password = password
         self._session = session
 
     async def async_get_data(self) -> any:
@@ -56,7 +53,7 @@ class IntegrationBlueprintApiClient:
             data=args,
             headers={"Content-type": "application/json; charset=UTF-8"},
         )
-        print('----------Lambda request----------')
+        LOGGER.debug('----------Lambda request----------')
         return results[0]
 
 
@@ -92,21 +89,21 @@ class IntegrationBlueprintApiClient:
                     json=data,
                 )
                 if response.status in (401, 403):
-                    raise IntegrationBlueprintApiClientAuthenticationError(
+                    raise OptisparkApiClientAuthenticationError(
                         "Invalid credentials",
                     )
                 response.raise_for_status()
                 return await response.json()
 
         except asyncio.TimeoutError as exception:
-            raise IntegrationBlueprintApiClientCommunicationError(
+            raise OptisparkApiClientCommunicationError(
                 "Timeout error fetching information",
             ) from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
-            raise IntegrationBlueprintApiClientCommunicationError(
+            raise OptisparkApiClientCommunicationError(
                 "Error fetching information",
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
-            raise IntegrationBlueprintApiClientError(
+            raise OptisparkApiClientError(
                 "Something really wrong happened!"
             ) from exception

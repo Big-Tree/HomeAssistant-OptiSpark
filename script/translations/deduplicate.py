@@ -10,6 +10,8 @@ from homeassistant.const import Platform
 from . import upload
 from .develop import flatten_translations
 from .util import get_base_arg_parser, load_json_from_path
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
 
 
 def get_arguments() -> argparse.Namespace:
@@ -91,9 +93,9 @@ def run():
         update_keys[key] = f"[%key:{key_to_reference}%]"
 
     if suggest_new_common:
-        print("Suggested new common words:")
+        LOGGER.info("Suggested new common words:")
         for key in sorted(suggest_new_common):
-            print(key)
+            LOGGER.info(key)
 
     components = sorted({key.split("::")[1] for key in update_keys})
 
@@ -112,7 +114,7 @@ def run():
             try:
                 to_write = to_write[parts.pop(0)]
             except KeyError:
-                print(to_write)
+                LOGGER.error(to_write)
                 raise
 
         to_write[parts.pop(0)] = value

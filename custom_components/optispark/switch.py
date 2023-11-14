@@ -57,6 +57,7 @@ class IntegrationBlueprintSwitch(IntegrationBlueprintEntity, SwitchEntity):
 
     @property
     def unique_id(self):
+        """Returns a unique ID for the sensor."""
         return 'sensor_id_switch'
 
     #@property

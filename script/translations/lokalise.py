@@ -1,11 +1,11 @@
 """API for Lokalise."""
 from __future__ import annotations
 
-from pprint import pprint
-
 import requests
 
 from .util import get_lokalise_token
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
 
 
 def get_api(project_id, debug=False) -> Lokalise:
@@ -32,7 +32,7 @@ class Lokalise:
             kwargs["json"] = data
 
         if self.debug:
-            print(method, f"{self.project_id}/{path}", data)
+            LOGGER.info(method, f"{self.project_id}/{path}", data)
 
         req = requests.request(
             method,
@@ -42,8 +42,8 @@ class Lokalise:
         req.raise_for_status()
 
         if self.debug:
-            pprint(req.json())
-            print()
+            LOGGER.info(req.json())
+            LOGGER.info()
 
         return req.json()
 
