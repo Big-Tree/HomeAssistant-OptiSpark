@@ -7,12 +7,12 @@ import re
 import subprocess
 
 from logging import Logger, getLogger
-LOGGER: Logger = getLogger(__package__)
 
 from .const import CLI_2_DOCKER_IMAGE, CORE_PROJECT_ID, INTEGRATIONS_DIR
 from .error import ExitApp
 from .util import get_current_branch, get_lokalise_token, load_json_from_path
 
+LOGGER: Logger = getLogger(__package__)
 FILENAME_FORMAT = re.compile(r"strings\.(?P<suffix>\w+)\.json")
 LOCAL_FILE = pathlib.Path("build/translations-upload.json").absolute()
 CONTAINER_FILE = "/opt/src/build/translations-upload.json"

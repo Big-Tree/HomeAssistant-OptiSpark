@@ -7,7 +7,6 @@ import pathlib
 import sys
 from time import monotonic
 from logging import Logger, getLogger
-LOGGER: Logger = getLogger(__package__)
 
 from . import (
     application_credentials,
@@ -31,6 +30,8 @@ from . import (
     zeroconf,
 )
 from .model import Config, Integration
+
+LOGGER: Logger = getLogger(__package__)
 
 INTEGRATION_PLUGINS = [
     application_credentials,

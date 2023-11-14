@@ -6,6 +6,10 @@ import sys
 
 from . import error, util
 
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
+
+
 
 def get_arguments() -> argparse.Namespace:
     """Get parsed passed in arguments."""
@@ -15,7 +19,7 @@ def get_arguments() -> argparse.Namespace:
 def main():
     """Run a translation script."""
     if not Path("requirements_all.txt").is_file():
-        print("Run from project root")
+        LOGGER.error("Run from project root")
         return 1
 
     args = get_arguments()
@@ -28,10 +32,10 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except error.ExitApp as err:
-        print()
-        print(f"Fatal Error: {err.reason}")
+        LOGGER.error()
+        LOGGER.error(f"Fatal Error: {err.reason}")
         sys.exit(err.exit_code)
     except (KeyboardInterrupt, EOFError):
-        print()
-        print("Aborted!")
+        LOGGER.error()
+        LOGGER.error("Aborted!")
         sys.exit(2)

@@ -4,13 +4,13 @@ import pathlib
 import re
 
 from logging import Logger, getLogger
-LOGGER: Logger = getLogger(__package__)
 
 from .const import CORE_PROJECT_ID, FRONTEND_PROJECT_ID, INTEGRATIONS_DIR
 from .lokalise import get_api
 from .util import load_json_from_path
 
 FRONTEND_REPO = pathlib.Path("../frontend/")
+LOGGER: Logger = getLogger(__package__)
 
 
 def create_lookup(results):
