@@ -13,9 +13,9 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .api import (
-    IntegrationBlueprintApiClient,
-    IntegrationBlueprintApiClientAuthenticationError,
-    IntegrationBlueprintApiClientError,
+    OptisparkApiClient,
+    OptisparkApiClientAuthenticationError,
+    OptisparkApiClientError,
 )
 from .const import DOMAIN, LOGGER
 
@@ -47,7 +47,7 @@ class BlueprintDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         hass: HomeAssistant,
-        client: IntegrationBlueprintApiClient,
+        client: OptisparkApiClient,
     ) -> None:
         """Initialize."""
         self.client = client
@@ -82,7 +82,7 @@ class BlueprintDataUpdateCoordinator(DataUpdateCoordinator):
                 out = get_closest_time(self.my_data)
                 return out
             #return await self.client.async_get_data()
-        except IntegrationBlueprintApiClientAuthenticationError as exception:
+        except OptisparkApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationBlueprintApiClientError as exception:
+        except OptisparkApiClientError as exception:
             raise UpdateFailed(exception) from exception
