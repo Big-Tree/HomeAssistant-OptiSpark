@@ -18,7 +18,7 @@ ENTITY_DESCRIPTIONS = (
 
 
 def get_closest_time(times_str: list[str]):
-    """Get the closest matching time to now from the input data"""
+    """Get the closest matching time to now from the input data."""
     # Convert time to dattime format
     times = [datetime.strptime(d, '%Y-%m-%d %H:%M') for d in times_str]
     now = datetime.now()
@@ -72,7 +72,7 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
 
     @property
     def unique_id(self):
-        """Return unique id for the sensor"""
+        """Return unique id for the sensor."""
         return 'sensor_id_number'
 
     #@property
