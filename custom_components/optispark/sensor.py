@@ -108,5 +108,5 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
 
     @property
     def unique_id(self):
-        """Returns a unique ID for the sensor"""
+        """Returns a unique ID for the sensor."""
         return f'sensor_id-{self.lambda_measurement}'
