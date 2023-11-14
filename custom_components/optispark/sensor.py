@@ -1,9 +1,9 @@
-"""Sensor platform for integration_blueprint."""
+"""Sensor platform for optispark."""
 from __future__ import annotations
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 
-from .const import DOMAIN
+from .const import DOMAIN, NAME, ATTRIBUTION, VERSION
 from .coordinator import BlueprintDataUpdateCoordinator
 from .entity import IntegrationBlueprintEntity
 from random import getrandbits
@@ -20,22 +20,22 @@ def random_uuid_hex() -> str:
 
 ENTITY_DESCRIPTIONS = (
     SensorEntityDescription(
-        key="integration_blueprint",
+        key="optispark",
         name="Base Demand",
         icon="mdi:format-quote-close",
     ),
     SensorEntityDescription(
-        key="integration_blueprint_second",
+        key="optispark_second",
         name="Optimised Demand",
         icon="mdi:format-quote-close",
     ),
     SensorEntityDescription(
-        key="integration_blueprint_third",
+        key="optispark_third",
         name="Price",
         icon="mdi:format-quote-close",
     ),
     SensorEntityDescription(
-        key="integration_blueprint_fourth",
+        key="optispark_fourth",
         name="House Temp",
         icon="mdi:format-quote-close",
     ),
@@ -73,8 +73,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
 
 class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
-    """integration_blueprint Sensor class."""
-
+    """optispark Sensor class."""
     #_attr_has_entity_name = True
 
     #@property
@@ -102,11 +101,9 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
 
     @property
     def state_class(self):
-        """Returns SensorStateClass.MEASUREMENT."""
         #return 50
         return SensorStateClass.MEASUREMENT
 
     @property
     def unique_id(self):
-        """Returns a unique ID for the sensor."""
         return f'sensor_id-{self.lambda_measurement}'
