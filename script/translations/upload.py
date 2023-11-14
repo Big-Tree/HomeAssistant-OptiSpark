@@ -6,6 +6,9 @@ import pathlib
 import re
 import subprocess
 
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
+
 from .const import CLI_2_DOCKER_IMAGE, CORE_PROJECT_ID, INTEGRATIONS_DIR
 from .error import ExitApp
 from .util import get_current_branch, get_lokalise_token, load_json_from_path
@@ -18,7 +21,7 @@ LANG_ISO = "en"
 
 def run_upload_docker():
     """Run the Docker image to upload the translations."""
-    print("Running Docker to upload latest translations.")
+    LOGGER.info("Running Docker to upload latest translations.")
     run = subprocess.run(
         [
             "docker",
@@ -44,7 +47,7 @@ def run_upload_docker():
         ],
         check=False,
     )
-    print()
+    LOGGER.info()
 
     if run.returncode != 0:
         raise ExitApp("Failed to download translations")

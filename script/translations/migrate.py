@@ -1,8 +1,10 @@
 """Migrate things."""
 import json
 import pathlib
-from pprint import pprint
 import re
+
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
 
 from .const import CORE_PROJECT_ID, FRONTEND_PROJECT_ID, INTEGRATIONS_DIR
 from .lokalise import get_api
@@ -27,29 +29,29 @@ def rename_keys(project_id, to_migrate):
 
     from_key_data = lokalise.keys_list({"filter_keys": ",".join(to_migrate)})
     if len(from_key_data) != len(to_migrate):
-        print(
+        LOGGER.info(
             f"Lookin up keys in Lokalise returns {len(from_key_data)} results, expected {len(to_migrate)}"
         )
         return
 
     from_key_lookup = create_lookup(from_key_data)
 
-    print("Gathering IDs")
+    LOGGER.info("Gathering IDs")
 
     for from_key, to_key in to_migrate.items():
         updates.append(
             {"key_id": from_key_lookup[from_key]["key_id"], "key_name": to_key}
         )
 
-    pprint(updates)
+    LOGGER.info(updates)
 
-    print()
+    LOGGER.info()
     while input("Type YES to confirm: ") != "YES":
         pass
 
-    print()
-    print("Updating keys")
-    pprint(lokalise.keys_bulk_update(updates))
+    LOGGER.info()
+    LOGGER.info("Updating keys")
+    LOGGER.info(lokalise.keys_bulk_update(updates))
 
 
 def list_keys_helper(lokalise, keys, params={}, *, validate=True):
@@ -70,12 +72,12 @@ def list_keys_helper(lokalise, keys, params={}, *, validate=True):
             results.extend(from_key_data)
             continue
 
-        print(
+        LOGGER.info(
             f"Lookin up keys in Lokalise returns {len(from_key_data)} results, expected {len(keys)}"
         )
         searched = set(filter_keys)
         returned = set(create_lookup(from_key_data))
-        print("Not found:", ", ".join(searched - returned))
+        LOGGER.error("Not found:", ", ".join(searched - returned))
         raise ValueError
 
     return results
@@ -91,7 +93,7 @@ def migrate_project_keys_translations(from_project_id, to_project_id, to_migrate
 
     # Fetch keys in target
     # We are going to skip migrating existing keys
-    print("Checking which target keys exist..")
+    LOGGER.info("Checking which target keys exist..")
     try:
         to_key_data = list_keys_helper(
             to_lokalise, list(to_migrate.values()), validate=False
@@ -104,11 +106,11 @@ def migrate_project_keys_translations(from_project_id, to_project_id, to_migrate
     missing = [key for key in to_migrate.values() if key not in existing]
 
     if not missing:
-        print("All keys to migrate exist already, nothing to do")
+        LOGGER.warn("All keys to migrate exist already, nothing to do")
         return
 
     # Fetch keys whose translations we're importing
-    print("Fetch translations that we're importing..")
+    LOGGER.info("Fetch translations that we're importing..")
     try:
         from_key_data = list_keys_helper(
             from_lokalise,
@@ -120,7 +122,7 @@ def migrate_project_keys_translations(from_project_id, to_project_id, to_migrate
 
     from_key_lookup = create_lookup(from_key_data)
 
-    print("Creating", ", ".join(missing))
+    LOGGER.info("Creating", ", ".join(missing))
     to_key_lookup = create_lookup(
         to_lokalise.keys_create(
             [{"key_name": key, "platforms": ["web"]} for key in missing]
@@ -149,11 +151,11 @@ def migrate_project_keys_translations(from_project_id, to_project_id, to_migrate
             }
         )
 
-    print("Updating")
-    pprint(updates)
-    print()
-    print()
-    pprint(to_lokalise.keys_bulk_update(updates))
+    LOGGER.info("Updating")
+    LOGGER.info(updates)
+    LOGGER.info()
+    LOGGER.info()
+    LOGGER.info(to_lokalise.keys_bulk_update(updates))
 
 
 def find_and_rename_keys():
@@ -183,8 +185,8 @@ def find_different_languages():
     core_languages = {lang["lang_iso"] for lang in core_api.languages_list()}
     frontend_languages = {lang["lang_iso"] for lang in frontend_api.languages_list()}
 
-    print("Core minus frontend", core_languages - frontend_languages)
-    print("Frontend minus core", frontend_languages - core_languages)
+    LOGGER.info("Core minus frontend", core_languages - frontend_languages)
+    LOGGER.info("Frontend minus core", frontend_languages - core_languages)
 
 
 def interactive_update():
@@ -202,12 +204,12 @@ def interactive_update():
 
         manifest = load_json_from_path(integration / "manifest.json")
 
-        print("Processing", manifest["name"])
-        print("Translation title", strings["title"])
+        LOGGER.info("Processing", manifest["name"])
+        LOGGER.info("Translation title", strings["title"])
         if input("Drop title? (1=yes, 2=no) ") == "1":
             strings.pop("title")
             strings_file.write_text(json.dumps(strings))
-        print()
+        LOGGER.info()
 
 
 STATE_REWRITE = {
@@ -314,9 +316,9 @@ def find_frontend_states():
         content["state"] = state
         strings.write_text(json.dumps(content, indent=2) + "\n")
 
-    pprint(to_migrate)
+    LOGGER.info(to_migrate)
 
-    print()
+    LOGGER.info()
     while input("Type YES to confirm: ") != "YES":
         pass
 
@@ -344,7 +346,7 @@ def apply_data_references(to_migrate):
                     elif value.startswith("[%key"):
                         pass
                     else:
-                        print(
+                        LOGGER.info(
                             f"{strings_file}: Skipped swapping '{key}': '{value}' does not contain '{key}'"
                         )
 

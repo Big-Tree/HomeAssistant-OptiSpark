@@ -5,6 +5,8 @@ from .const import CORE_PROJECT_ID, FRONTEND_DIR, FRONTEND_PROJECT_ID, INTEGRATI
 from .error import ExitApp
 from .lokalise import get_api
 from .util import get_base_arg_parser, load_json_from_path
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
 
 
 def get_arguments() -> argparse.Namespace:
@@ -87,10 +89,10 @@ def run():
         lokalise = get_api(CORE_PROJECT_ID)
 
     if not missing_keys:
-        print("No missing translations!")
+        LOGGER.info("No missing translations!")
         return 0
 
-    print(f"Found {len(missing_keys)} extra keys")
+    LOGGER.info(f"Found {len(missing_keys)} extra keys")
 
     # We can't query too many keys at once, so limit the number to 50.
     for i in range(0, len(missing_keys), 50):
@@ -98,21 +100,21 @@ def run():
 
         key_data = lokalise.keys_list({"filter_keys": ",".join(chunk), "limit": 1000})
         if len(key_data) != len(chunk):
-            print(
+            LOGGER.info(
                 f"Lookin up key in Lokalise returns {len(key_data)} results, expected {len(chunk)}"
             )
 
         if not key_data:
             continue
 
-        print(f"Deleting {len(key_data)} keys:")
+        LOGGER.info(f"Deleting {len(key_data)} keys:")
         for key in key_data:
-            print(" -", key["key_name"]["web"])
-        print()
+            LOGGER.info(" -", key["key_name"]["web"])
+        LOGGER.info()
         while input("Type YES to delete these keys: ") != "YES":
             pass
 
-        print(lokalise.keys_delete_multiple([key["key_id"] for key in key_data]))
-        print()
+        LOGGER.info(lokalise.keys_delete_multiple([key["key_id"] for key in key_data]))
+        LOGGER.info()
 
     return 0

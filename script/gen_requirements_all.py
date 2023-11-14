@@ -13,6 +13,9 @@ import sys
 import tomllib
 from typing import Any
 
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
+
 from homeassistant.util.yaml.loader import load_yaml
 from script.hassfest.model import Integration
 
@@ -280,8 +283,8 @@ def gather_modules() -> dict[str, list[str]] | None:
         reqs[key] = sorted(reqs[key], key=lambda name: (len(name.split(".")), name))
 
     if errors:
-        print("******* ERROR")
-        print("Errors while importing: ", ", ".join(errors))
+        LOGGER.error("******* ERROR")
+        LOGGER.error("Errors while importing: ", ", ".join(errors))
         return None
 
     return reqs
@@ -314,7 +317,7 @@ def gather_requirements_from_modules(
         try:
             module = importlib.import_module(package)
         except ImportError as err:
-            print(f"{package.replace('.', '/')}.py: {err}")
+            LOGGER.error(f"{package.replace('.', '/')}.py: {err}")
             errors.append(package)
             continue
 
@@ -455,7 +458,7 @@ def diff_file(filename: str, content: str) -> list[str]:
 def main(validate: bool) -> int:
     """Run the script."""
     if not os.path.isfile("requirements_all.txt"):
-        print("Run this from HA root dir")
+        LOGGER.error("Run this from HA root dir")
         return 1
 
     data = gather_modules()
@@ -486,12 +489,12 @@ def main(validate: bool) -> int:
                 errors.append("".join(diff))
 
         if errors:
-            print("ERROR - FOUND THE FOLLOWING DIFFERENCES")
-            print()
-            print()
-            print("\n\n".join(errors))
-            print()
-            print("Please run python3 -m script.gen_requirements_all")
+            LOGGER.error("ERROR - FOUND THE FOLLOWING DIFFERENCES")
+            LOGGER.error()
+            LOGGER.error()
+            LOGGER.error("\n\n".join(errors))
+            LOGGER.error()
+            LOGGER.error("Please run python3 -m script.gen_requirements_all")
             return 1
 
         return 0

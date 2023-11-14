@@ -3,17 +3,12 @@ from __future__ import annotations
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
-from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .api import (
-    IntegrationBlueprintApiClient,
-    IntegrationBlueprintApiClientAuthenticationError,
-    IntegrationBlueprintApiClientCommunicationError,
-    IntegrationBlueprintApiClientError,
+    OptisparkApiClient
 )
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 
 
 class BlueprintFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -37,13 +32,13 @@ class BlueprintFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 title=user_input['postcode'],
                 data=user_input,
             )
-            #except IntegrationBlueprintApiClientAuthenticationError as exception:
+            #except OptisparkApiClientAuthenticationError as exception:
             #    LOGGER.warning(exception)
             #    _errors["base"] = "auth"
-            #except IntegrationBlueprintApiClientCommunicationError as exception:
+            #except OptisparkApiClientCommunicationError as exception:
             #    LOGGER.error(exception)
             #    _errors["base"] = "connection"
-            #except IntegrationBlueprintApiClientError as exception:
+            #except OptisparkApiClientError as exception:
             #    LOGGER.exception(exception)
             #    _errors["base"] = "unknown"
             #else:
@@ -68,7 +63,7 @@ class BlueprintFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _test_credentials_old(self, username: str, password: str) -> None:
         """Validate credentials."""
-        client = IntegrationBlueprintApiClient(
+        client = OptisparkApiClient(
             username=username,
             password=password,
             session=async_create_clientsession(self.hass),

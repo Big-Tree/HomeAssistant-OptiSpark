@@ -6,6 +6,8 @@ from operator import attrgetter
 import pathlib
 import sys
 from time import monotonic
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
 
 from . import (
     application_credentials,
@@ -134,7 +136,7 @@ def main() -> int:
     try:
         config = get_config()
     except RuntimeError as err:
-        print(err)
+        LOGGER.error(err)
         return 1
 
     plugins = [*INTEGRATION_PLUGINS]
@@ -157,20 +159,20 @@ def main() -> int:
             continue
         try:
             start = monotonic()
-            print(f"Validating {plugin_name}...", end="", flush=True)
+            LOGGER.info(f"Validating {plugin_name}...", end="", flush=True)
             if (
                 plugin is requirements
                 and config.requirements
                 and not config.specific_integrations
             ):
-                print()
+                LOGGER.info()
             plugin.validate(integrations, config)
-            print(f" done in {monotonic() - start:.2f}s")
+            LOGGER.info(f" done in {monotonic() - start:.2f}s")
         except RuntimeError as err:
-            print()
-            print()
-            print("Error!")
-            print(err)
+            LOGGER.error()
+            LOGGER.error()
+            LOGGER.error("Error!")
+            LOGGER.error(err)
             return 1
 
     # When we generate, all errors that are fixable will be ignored,
@@ -189,10 +191,10 @@ def main() -> int:
 
     warnings_itg = [itg for itg in integrations.values() if itg.warnings]
 
-    print()
-    print("Integrations:", len(integrations))
-    print("Invalid integrations:", len(invalid_itg))
-    print()
+    LOGGER.info()
+    LOGGER.info("Integrations:", len(integrations))
+    LOGGER.info("Invalid integrations:", len(invalid_itg))
+    LOGGER.info()
 
     if not invalid_itg and not general_errors:
         print_integrations_status(config, warnings_itg, show_fixable_errors=False)
@@ -207,14 +209,14 @@ def main() -> int:
         return 0
 
     if config.action == "generate":
-        print("Found errors. Generating files canceled.")
-        print()
+        LOGGER.error("Found errors. Generating files canceled.")
+        LOGGER.error()
 
     if general_errors:
-        print("General errors:")
+        LOGGER.error("General errors:")
         for error in general_errors:
-            print("*", error)
-        print()
+            LOGGER.error("*", error)
+        LOGGER.error()
 
     invalid_itg.extend(itg for itg in warnings_itg if itg not in invalid_itg)
 
@@ -232,13 +234,13 @@ def print_integrations_status(
     """Print integration status."""
     for integration in sorted(integrations, key=attrgetter("domain")):
         extra = f" - {integration.path}" if config.specific_integrations else ""
-        print(f"Integration {integration.domain}{extra}:")
+        LOGGER.info(f"Integration {integration.domain}{extra}:")
         for error in integration.errors:
             if show_fixable_errors or not error.fixable:
-                print("*", "[ERROR]", error)
+                LOGGER.error("*", "[ERROR]", error)
         for warning in integration.warnings:
-            print("*", "[WARNING]", warning)
-        print()
+            LOGGER.warn("*", "[WARNING]", warning)
+        LOGGER.info()
 
 
 if __name__ == "__main__":
