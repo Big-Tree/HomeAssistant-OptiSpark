@@ -13,11 +13,11 @@ import sys
 import tomllib
 from typing import Any
 
-from logging import Logger, getLogger
-LOGGER: Logger = getLogger(__package__)
-
 from homeassistant.util.yaml.loader import load_yaml
 from script.hassfest.model import Integration
+
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
 
 COMMENT_REQUIREMENTS = (
     "Adafruit-BBIO",

@@ -21,6 +21,7 @@ from .const import DOMAIN, LOGGER
 
 
 def get_closest_time(my_data):
+    """Get the closest matching time to now from the data set provided"""
     # Convert time to dattime format
     times_str: list[str] = list(my_data['base_demand'].keys())
     times = [datetime.strptime(d, '%Y-%m-%d %H:%M') for d in times_str]

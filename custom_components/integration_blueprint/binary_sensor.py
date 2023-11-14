@@ -51,6 +51,7 @@ class IntegrationBlueprintBinarySensor(IntegrationBlueprintEntity, BinarySensorE
 
     @property
     def unique_id(self):
+        """Return a unique id for the sensor"""
         return 'sensor_id_binary'
 
     #@property

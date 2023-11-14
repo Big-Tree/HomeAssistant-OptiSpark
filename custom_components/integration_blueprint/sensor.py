@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 
-from .const import DOMAIN, NAME, ATTRIBUTION, VERSION
+from .const import DOMAIN
 from .coordinator import BlueprintDataUpdateCoordinator
 from .entity import IntegrationBlueprintEntity
 from random import getrandbits
@@ -74,6 +74,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
 class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
     """integration_blueprint Sensor class."""
+
     #_attr_has_entity_name = True
 
     #@property
@@ -101,9 +102,11 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
 
     @property
     def state_class(self):
+        """Returns SensorStateClass.MEASUREMENT"""
         #return 50
         return SensorStateClass.MEASUREMENT
 
     @property
     def unique_id(self):
+        """Returns a unique ID for the sensor"""
         return f'sensor_id-{self.lambda_measurement}'
