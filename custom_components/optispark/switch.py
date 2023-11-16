@@ -4,13 +4,13 @@ from __future__ import annotations
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 
 from .const import DOMAIN
-from .coordinator import BlueprintDataUpdateCoordinator
-from .entity import IntegrationBlueprintEntity
+from .coordinator import OptisparkDataUpdateCoordinator
+from .entity import OptisparkEntity
 
 ENTITY_DESCRIPTIONS = (
     SwitchEntityDescription(
         key="optispark",
-        name="Integration Switch",
+        name="Example Switch",
         icon="mdi:format-quote-close",
     ),
 )
@@ -20,7 +20,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the sensor platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_devices(
-        IntegrationBlueprintSwitch(
+        OptisparkSwitch(
             coordinator=coordinator,
             entity_description=entity_description,
         )
@@ -28,12 +28,12 @@ async def async_setup_entry(hass, entry, async_add_devices):
     )
 
 
-class IntegrationBlueprintSwitch(IntegrationBlueprintEntity, SwitchEntity):
+class OptisparkSwitch(OptisparkEntity, SwitchEntity):
     """optispark switch class."""
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
+        coordinator: OptisparkDataUpdateCoordinator,
         entity_description: SwitchEntityDescription,
     ) -> None:
         """Initialize the switch class."""
@@ -59,10 +59,3 @@ class IntegrationBlueprintSwitch(IntegrationBlueprintEntity, SwitchEntity):
     def unique_id(self):
         """Returns a unique ID for the sensor."""
         return 'sensor_id_switch'
-
-    #@property
-    #def device_info(self):
-    #    """Return device information."""
-    #    return {
-    #        "identifiers": {("optispark_integration", "optispark_device_id")},
-    #    }

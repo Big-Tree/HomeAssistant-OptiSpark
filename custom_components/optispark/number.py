@@ -3,15 +3,16 @@ from __future__ import annotations
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 
-from .coordinator import BlueprintDataUpdateCoordinator
-from .entity import IntegrationBlueprintEntity
+from .coordinator import OptisparkDataUpdateCoordinator
+from .entity import OptisparkEntity
 
 from datetime import datetime
+from .const import DOMAIN
 
 ENTITY_DESCRIPTIONS = (
     SensorEntityDescription(
         key="optispark",
-        name="Optimised Demand",
+        name="Example Number",
         icon="mdi:format-quote-close",
     ),
 )
@@ -27,25 +28,26 @@ def get_closest_time(times_str: list[str]):
     #print(f'The closest time: {times[min_idx]}')
     return times_str[min_idx]
 
+
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the sensor platform."""
-    pass
-    #coordinator = hass.data[DOMAIN][entry.entry_id]
-    #async_add_devices(
-    #    IntegrationBlueprintSensor(
-    #        coordinator=coordinator,
-    #        entity_description=entity_description,
-    #    )
-    #    for entity_description in ENTITY_DESCRIPTIONS
-    #)
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    async_add_devices(
+        [
+            OptisparkNumber(
+                coordinator=coordinator,
+                entity_description=ENTITY_DESCRIPTIONS[0],
+            )
+        ]
+    )
 
 
-class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
+class OptisparkNumber(OptisparkEntity, SensorEntity):
     """optispark Sensor class."""
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
+        coordinator: OptisparkDataUpdateCoordinator,
         entity_description: SensorEntityDescription,
     ) -> None:
         """Initialize the sensor class."""

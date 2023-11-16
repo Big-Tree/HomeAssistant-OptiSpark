@@ -4,8 +4,8 @@ from __future__ import annotations
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 
 from .const import DOMAIN
-from .coordinator import BlueprintDataUpdateCoordinator
-from .entity import IntegrationBlueprintEntity
+from .coordinator import OptisparkDataUpdateCoordinator
+from .entity import OptisparkEntity
 from random import getrandbits
 
 
@@ -47,22 +47,22 @@ async def async_setup_entry(hass, entry, async_add_devices):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_devices(
         [
-            IntegrationBlueprintSensor(
+            OptisparkSensor(
                 coordinator=coordinator,
                 entity_description=ENTITY_DESCRIPTIONS[0],
                 lambda_measurement='base_demand'
             ),
-            IntegrationBlueprintSensor(
+            OptisparkSensor(
                 coordinator=coordinator,
                 entity_description=ENTITY_DESCRIPTIONS[1],
                 lambda_measurement='optimised_demand'
             ),
-            IntegrationBlueprintSensor(
+            OptisparkSensor(
                 coordinator=coordinator,
                 entity_description=ENTITY_DESCRIPTIONS[2],
                 lambda_measurement='prices'
             ),
-            IntegrationBlueprintSensor(
+            OptisparkSensor(
                 coordinator=coordinator,
                 entity_description=ENTITY_DESCRIPTIONS[3],
                 lambda_measurement='temps'
@@ -72,7 +72,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
     )
 
 
-class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
+class OptisparkSensor(OptisparkEntity, SensorEntity):
     """optispark Sensor class."""
 
     #_attr_has_entity_name = True
@@ -84,7 +84,7 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
+        coordinator: OptisparkDataUpdateCoordinator,
         entity_description: SensorEntityDescription,
         lambda_measurement: str
     ) -> None:
