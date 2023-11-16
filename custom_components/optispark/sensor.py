@@ -1,11 +1,11 @@
-"""Sensor platform for integration_blueprint."""
+"""Sensor platform for optispark."""
 from __future__ import annotations
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 
-from .const import DOMAIN, NAME, ATTRIBUTION, VERSION
-from .coordinator import BlueprintDataUpdateCoordinator
-from .entity import IntegrationBlueprintEntity
+from .const import DOMAIN
+from .coordinator import OptisparkDataUpdateCoordinator
+from .entity import OptisparkEntity
 from random import getrandbits
 
 
@@ -20,22 +20,22 @@ def random_uuid_hex() -> str:
 
 ENTITY_DESCRIPTIONS = (
     SensorEntityDescription(
-        key="integration_blueprint",
+        key="optispark",
         name="Base Demand",
         icon="mdi:format-quote-close",
     ),
     SensorEntityDescription(
-        key="integration_blueprint_second",
+        key="optispark_second",
         name="Optimised Demand",
         icon="mdi:format-quote-close",
     ),
     SensorEntityDescription(
-        key="integration_blueprint_third",
+        key="optispark_third",
         name="Price",
         icon="mdi:format-quote-close",
     ),
     SensorEntityDescription(
-        key="integration_blueprint_fourth",
+        key="optispark_fourth",
         name="House Temp",
         icon="mdi:format-quote-close",
     ),
@@ -47,22 +47,22 @@ async def async_setup_entry(hass, entry, async_add_devices):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_devices(
         [
-            IntegrationBlueprintSensor(
+            OptisparkSensor(
                 coordinator=coordinator,
                 entity_description=ENTITY_DESCRIPTIONS[0],
                 lambda_measurement='base_demand'
             ),
-            IntegrationBlueprintSensor(
+            OptisparkSensor(
                 coordinator=coordinator,
                 entity_description=ENTITY_DESCRIPTIONS[1],
                 lambda_measurement='optimised_demand'
             ),
-            IntegrationBlueprintSensor(
+            OptisparkSensor(
                 coordinator=coordinator,
                 entity_description=ENTITY_DESCRIPTIONS[2],
                 lambda_measurement='prices'
             ),
-            IntegrationBlueprintSensor(
+            OptisparkSensor(
                 coordinator=coordinator,
                 entity_description=ENTITY_DESCRIPTIONS[3],
                 lambda_measurement='temps'
@@ -72,8 +72,9 @@ async def async_setup_entry(hass, entry, async_add_devices):
     )
 
 
-class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
-    """integration_blueprint Sensor class."""
+class OptisparkSensor(OptisparkEntity, SensorEntity):
+    """optispark Sensor class."""
+
     #_attr_has_entity_name = True
 
     #@property
@@ -83,7 +84,7 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
+        coordinator: OptisparkDataUpdateCoordinator,
         entity_description: SensorEntityDescription,
         lambda_measurement: str
     ) -> None:
@@ -101,9 +102,11 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
 
     @property
     def state_class(self):
+        """Returns the sensor stateclass measurement field."""
         #return 50
         return SensorStateClass.MEASUREMENT
 
     @property
     def unique_id(self):
+        """Returns a unique ID for the sensor."""
         return f'sensor_id-{self.lambda_measurement}'

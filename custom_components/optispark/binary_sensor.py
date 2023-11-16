@@ -1,4 +1,4 @@
-"""Binary sensor platform for integration_blueprint."""
+"""Binary sensor platform for optispark."""
 from __future__ import annotations
 
 from homeassistant.components.binary_sensor import (
@@ -8,13 +8,13 @@ from homeassistant.components.binary_sensor import (
 )
 
 from .const import DOMAIN
-from .coordinator import BlueprintDataUpdateCoordinator
-from .entity import IntegrationBlueprintEntity
+from .coordinator import OptisparkDataUpdateCoordinator
+from .entity import OptisparkEntity
 
 ENTITY_DESCRIPTIONS = (
     BinarySensorEntityDescription(
-        key="integration_blueprint",
-        name="Integration Blueprint Binary Sensor",
+        key="optispark",
+        name="Example Binary Sensor",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
     ),
 )
@@ -24,7 +24,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the binary_sensor platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_devices(
-        IntegrationBlueprintBinarySensor(
+        OptisparkinarySensor(
             coordinator=coordinator,
             entity_description=entity_description,
         )
@@ -32,12 +32,12 @@ async def async_setup_entry(hass, entry, async_add_devices):
     )
 
 
-class IntegrationBlueprintBinarySensor(IntegrationBlueprintEntity, BinarySensorEntity):
-    """integration_blueprint binary_sensor class."""
+class OptisparkinarySensor(OptisparkEntity, BinarySensorEntity):
+    """optispark binary_sensor class."""
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
+        coordinator: OptisparkDataUpdateCoordinator,
         entity_description: BinarySensorEntityDescription,
     ) -> None:
         """Initialize the binary_sensor class."""
@@ -51,11 +51,5 @@ class IntegrationBlueprintBinarySensor(IntegrationBlueprintEntity, BinarySensorE
 
     @property
     def unique_id(self):
+        """Return a unique id for the sensor."""
         return 'sensor_id_binary'
-
-    #@property
-    #def device_info(self):
-    #    """Return device information."""
-    #    return {
-    #        "identifiers": {("optispark_integration", "optispark_device_id")},
-    #    }

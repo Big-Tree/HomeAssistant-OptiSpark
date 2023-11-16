@@ -9,6 +9,8 @@ import sys
 from . import download, upload
 from .const import INTEGRATIONS_DIR
 from .util import get_base_arg_parser
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
 
 
 def valid_integration(integration):
@@ -84,7 +86,7 @@ def substitute_reference(value, flattened_translations):
                 ),
             )
         else:
-            print(f"Invalid substitution key '{key}' found in string '{value}'")
+            LOGGER.error(f"Invalid substitution key '{key}' found in string '{value}'")
             sys.exit(1)
 
     return new
@@ -92,10 +94,10 @@ def substitute_reference(value, flattened_translations):
 
 def run_single(translations, flattened_translations, integration):
     """Run the script for a single integration."""
-    print(f"Generating translations for {integration}")
+    LOGGER.info(f"Generating translations for {integration}")
 
     if integration not in translations["component"]:
-        print("Integration has no strings.json")
+        LOGGER.error("Integration has no strings.json")
         sys.exit(1)
 
     integration_strings = translations["component"][integration]
@@ -125,7 +127,7 @@ def run():
     if args.all:
         for integration in translations["component"]:
             run_single(translations, flattened_translations, integration)
-        print("🌎 Generated translation files for all integrations")
+        LOGGER.info("🌎 Generated translation files for all integrations")
         return 0
 
     if args.integration:
@@ -137,8 +139,8 @@ def run():
             or not Path(f"homeassistant/components/{integration}").exists()
         ):
             if integration is not None:
-                print(f"Integration {integration} doesn't exist!")
-                print()
+                LOGGER.warn(f"Integration {integration} doesn't exist!")
+                LOGGER.warn()
             integration = input("Integration to process: ")
 
     run_single(translations, flattened_translations, integration)

@@ -6,6 +6,10 @@ import json
 import pathlib
 from typing import Any, Literal
 
+from logging import Logger, getLogger
+LOGGER: Logger = getLogger(__package__)
+
+
 
 @dataclass
 class Error:
@@ -115,7 +119,7 @@ class Integration:
             init = fil / "__init__.py"
             manifest = fil / "manifest.json"
             if not init.exists() and not manifest.exists():
-                print(
+                LOGGER.warn(
                     f"Warning: {init} and manifest.json missing, "
                     "skipping directory. If this is your development "
                     "environment, you can safely delete this folder."

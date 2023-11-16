@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for integration_blueprint."""
+"""DataUpdateCoordinator for optispark."""
 from __future__ import annotations
 
 from datetime import timedelta, datetime
@@ -13,14 +13,15 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .api import (
-    IntegrationBlueprintApiClient,
-    IntegrationBlueprintApiClientAuthenticationError,
-    IntegrationBlueprintApiClientError,
+    OptisparkApiClient,
+    OptisparkApiClientAuthenticationError,
+    OptisparkApiClientError,
 )
 from .const import DOMAIN, LOGGER
 
 
 def get_closest_time(my_data):
+    """Get the closest matching time to now from the data set provided."""
     # Convert time to dattime format
     times_str: list[str] = list(my_data['base_demand'].keys())
     times = [datetime.strptime(d, '%Y-%m-%d %H:%M') for d in times_str]
@@ -38,7 +39,7 @@ def get_closest_time(my_data):
 
 
 # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
-class BlueprintDataUpdateCoordinator(DataUpdateCoordinator):
+class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
     config_entry: ConfigEntry
@@ -46,7 +47,7 @@ class BlueprintDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         hass: HomeAssistant,
-        client: IntegrationBlueprintApiClient,
+        client: OptisparkApiClient,
     ) -> None:
         """Initialize."""
         self.client = client
@@ -81,7 +82,7 @@ class BlueprintDataUpdateCoordinator(DataUpdateCoordinator):
                 out = get_closest_time(self.my_data)
                 return out
             #return await self.client.async_get_data()
-        except IntegrationBlueprintApiClientAuthenticationError as exception:
+        except OptisparkApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationBlueprintApiClientError as exception:
+        except OptisparkApiClientError as exception:
             raise UpdateFailed(exception) from exception

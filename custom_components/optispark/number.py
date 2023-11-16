@@ -1,24 +1,25 @@
-"""Sensor platform for integration_blueprint."""
+"""Sensor platform for optispark."""
 from __future__ import annotations
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 
-from .const import DOMAIN
-from .coordinator import BlueprintDataUpdateCoordinator
-from .entity import IntegrationBlueprintEntity
+from .coordinator import OptisparkDataUpdateCoordinator
+from .entity import OptisparkEntity
 
 from datetime import datetime
+from .const import DOMAIN
 
 ENTITY_DESCRIPTIONS = (
     SensorEntityDescription(
-        key="integration_blueprint",
-        name="Optimised Demand",
+        key="optispark",
+        name="Example Number",
         icon="mdi:format-quote-close",
     ),
 )
 
 
 def get_closest_time(times_str: list[str]):
+    """Get the closest matching time to now from the input data."""
     # Convert time to dattime format
     times = [datetime.strptime(d, '%Y-%m-%d %H:%M') for d in times_str]
     now = datetime.now()
@@ -27,25 +28,26 @@ def get_closest_time(times_str: list[str]):
     #print(f'The closest time: {times[min_idx]}')
     return times_str[min_idx]
 
+
 async def async_setup_entry(hass, entry, async_add_devices):
-    pass
-    #"""Set up the sensor platform."""
-    #coordinator = hass.data[DOMAIN][entry.entry_id]
-    #async_add_devices(
-    #    IntegrationBlueprintSensor(
-    #        coordinator=coordinator,
-    #        entity_description=entity_description,
-    #    )
-    #    for entity_description in ENTITY_DESCRIPTIONS
-    #)
+    """Set up the sensor platform."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    async_add_devices(
+        [
+            OptisparkNumber(
+                coordinator=coordinator,
+                entity_description=ENTITY_DESCRIPTIONS[0],
+            )
+        ]
+    )
 
 
-class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
-    """integration_blueprint Sensor class."""
+class OptisparkNumber(OptisparkEntity, SensorEntity):
+    """optispark Sensor class."""
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
+        coordinator: OptisparkDataUpdateCoordinator,
         entity_description: SensorEntityDescription,
     ) -> None:
         """Initialize the sensor class."""
@@ -66,12 +68,13 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
         #base_demand_now = data['base_demand'][closest_time]
         #return base_demand_now
 
-        import time
-        out = time.clock_gettime(0)
+        #import time
+        #out = time.clock_gettime(0)
         return 5
 
     @property
     def unique_id(self):
+        """Return unique id for the sensor."""
         return 'sensor_id_number'
 
     #@property
