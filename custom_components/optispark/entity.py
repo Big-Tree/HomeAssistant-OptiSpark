@@ -1,6 +1,7 @@
 """OptisparkEntity class.
-Ensures that all entities that inherit this are grouped together into the same device
+Ensures that all entities that inherit this are grouped together into the same device.
 """
+
 from __future__ import annotations
 
 from homeassistant.helpers.entity import DeviceInfo
