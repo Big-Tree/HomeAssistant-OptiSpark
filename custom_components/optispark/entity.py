@@ -1,4 +1,5 @@
 """OptisparkEntity class.
+
 Ensures that all entities that inherit this are grouped together into the same device.
 """
 
