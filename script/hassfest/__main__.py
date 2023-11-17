@@ -166,12 +166,12 @@ def main() -> int:
                 and config.requirements
                 and not config.specific_integrations
             ):
-                LOGGER.info()
+                LOGGER.info('')
             plugin.validate(integrations, config)
             LOGGER.info(f" done in {monotonic() - start:.2f}s")
         except RuntimeError as err:
-            LOGGER.error()
-            LOGGER.error()
+            LOGGER.error('')
+            LOGGER.error('')
             LOGGER.error("Error!")
             LOGGER.error(err)
             return 1
@@ -192,10 +192,10 @@ def main() -> int:
 
     warnings_itg = [itg for itg in integrations.values() if itg.warnings]
 
-    LOGGER.info()
+    LOGGER.info('')
     LOGGER.info("Integrations:", len(integrations))
     LOGGER.info("Invalid integrations:", len(invalid_itg))
-    LOGGER.info()
+    LOGGER.info('')
 
     if not invalid_itg and not general_errors:
         print_integrations_status(config, warnings_itg, show_fixable_errors=False)
@@ -211,13 +211,13 @@ def main() -> int:
 
     if config.action == "generate":
         LOGGER.error("Found errors. Generating files canceled.")
-        LOGGER.error()
+        LOGGER.error('')
 
     if general_errors:
         LOGGER.error("General errors:")
         for error in general_errors:
             LOGGER.error("*", error)
-        LOGGER.error()
+        LOGGER.error('')
 
     invalid_itg.extend(itg for itg in warnings_itg if itg not in invalid_itg)
 
@@ -241,7 +241,7 @@ def print_integrations_status(
                 LOGGER.error("*", "[ERROR]", error)
         for warning in integration.warnings:
             LOGGER.warn("*", "[WARNING]", warning)
-        LOGGER.info()
+        LOGGER.info('')
 
 
 if __name__ == "__main__":
