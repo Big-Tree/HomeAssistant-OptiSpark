@@ -39,7 +39,7 @@ class OptisparkApiClient:
     async def async_get_data(self) -> any:
         """Get data from the API."""
         args = {}
-        args['house_type'] = 2
+        args['house_config'] = None
         args['set_point'] = 20.0
         args['temp_range'] = 3.0
         args['postcode'] = 'SW118DD'
@@ -92,10 +92,16 @@ class OptisparkApiClient:
                     raise OptisparkApiClientAuthenticationError(
                         "Invalid credentials",
                     )
+                if response.status == 502:
+                    # HomeAssistant will not print errors if there was never a successful update
+                    LOGGER.debug('OptisparkApiClientCommunicationError:\n  502 Bad Gateway - check payload')
+                    raise OptisparkApiClientCommunicationError(
+                        '502 Bad Gateway - check payload')
                 response.raise_for_status()
                 return await response.json()
 
         except asyncio.TimeoutError as exception:
+            LOGGER.debug('OptisparkApiClientCommunicationError:\n  Timeout error fetching information')
             raise OptisparkApiClientCommunicationError(
                 "Timeout error fetching information",
             ) from exception

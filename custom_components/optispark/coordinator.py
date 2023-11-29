@@ -18,6 +18,8 @@ from .api import (
     OptisparkApiClientError,
 )
 from .const import DOMAIN, LOGGER
+#from homeassistant.helpers.entity_registry import RegistryEntity
+from homeassistant.helpers import entity_registry
 
 
 def get_closest_time(my_data):
@@ -48,6 +50,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         self,
         hass: HomeAssistant,
         client: OptisparkApiClient,
+        climate_entity: entity_registry.RegistryEntity
     ) -> None:
         """Initialize."""
         self.client = client
@@ -57,9 +60,11 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             name=DOMAIN,
             update_interval=timedelta(seconds=10),
         )
+        self.climate_entity = climate_entity
         self.results = {}
         self.last_update_time = 0
         self.update_lambda_interval = 60*60
+
 
     async def _async_update_data(self):
         """Update data via library."""
