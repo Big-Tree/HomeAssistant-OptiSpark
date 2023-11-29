@@ -1,12 +1,13 @@
 {
     "config": {
         "step": {
-            "user": {
+            "init": {
                 "description": "Please enter your postcode so that the weather can be fetched",
                 "data": {
-                    "postcode": "Postcode"
+                    "postcode": "Postcode",
+                    "climate_entity": "Select your climate entity"
                 }
-            }
+            },
         },
         "error": {
             "auth": "Username/Password is wrong.",
