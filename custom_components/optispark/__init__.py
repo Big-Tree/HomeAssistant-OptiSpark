@@ -17,7 +17,6 @@ from .coordinator import OptisparkDataUpdateCoordinator
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
-    Platform.BINARY_SENSOR,
     Platform.SWITCH,
     Platform.NUMBER,
 ]
@@ -34,7 +33,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         client=OptisparkApiClient(
             postcode=entry.data['postcode'],
             session=async_get_clientsession(hass)),
-        climate_entity=climate_entity
+        climate_entity=climate_entity,
     )
     # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
     await coordinator.async_config_entry_first_refresh()

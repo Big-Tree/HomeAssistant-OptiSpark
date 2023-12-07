@@ -6,3 +6,7 @@ logger:
   default: info
   logs:
     custom_components.optispark: debug
+
+http:
+  #server_port: 8010
+  server_port: 8011
