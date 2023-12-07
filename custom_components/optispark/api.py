@@ -1,4 +1,4 @@
-"""Sample API Client."""
+"""Optispark API Client."""
 from __future__ import annotations
 
 import asyncio
@@ -25,6 +25,12 @@ class OptisparkApiClientAuthenticationError(
     """Exception to indicate an authentication error."""
 
 
+class OptisparkApiClientLambdaError(
+    OptisparkApiClientError
+):
+    """Exception to indicate lambda return an error."""
+
+
 class OptisparkApiClient:
     """Sample API Client."""
 
@@ -36,41 +42,22 @@ class OptisparkApiClient:
         """Sample API Client."""
         self._session = session
 
-    async def async_get_data(self) -> any:
+    async def async_get_data(self, lambda_args) -> any:
         """Get data from the API."""
-        args = {}
-        args['house_config'] = None
-        args['set_point'] = 20.0
-        args['temp_range'] = 3.0
-        args['postcode'] = 'SW118DD'
-
         lambda_url = 'https://pkgy5zrwinj2mcxerishahglvi0hfoqh.lambda-url.eu-west-2.on.aws/0.00001666670.0000166667'
         #results, errors = json.loads(response.text)
 
-        results = await self._api_wrapper(
+        results, errors = await self._api_wrapper(
             method="post",
             url=lambda_url,
-            data=args,
+            data=lambda_args,
             headers={"Content-type": "application/json; charset=UTF-8"},
         )
         LOGGER.debug('----------Lambda request----------')
-        return results[0]
-
-
-
-
-        return await self._api_wrapper(
-            method="get", url="https://jsonplaceholder.typicode.com/posts/1"
-        )
-
-    async def async_set_title(self, value: str) -> any:
-        """Get data from the API."""
-        return await self._api_wrapper(
-            method="patch",
-            url="https://jsonplaceholder.typicode.com/posts/1",
-            data={"title": value},
-            headers={"Content-type": "application/json; charset=UTF-8"},
-        )
+        if errors['success'] is False:
+            LOGGER.debug(f'OptisparkApiClientLambdaError: {errors["error_message"]}')
+            raise OptisparkApiClientLambdaError(errors['error_message'])
+        return results
 
     async def _api_wrapper(
         self,

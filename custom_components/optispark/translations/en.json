@@ -7,7 +7,7 @@
                     "postcode": "Postcode",
                     "climate_entity": "Select your climate entity"
                 }
-            },
+            }
         },
         "error": {
             "auth": "Username/Password is wrong.",
