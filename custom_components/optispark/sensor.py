@@ -58,6 +58,18 @@ async def async_setup_entry(hass, entry, async_add_devices):
             native_unit_of_measurement='°C',
             suggested_display_precision=1
         ),
+        OptisparkSensor(
+            coordinator=coordinator,
+            entity_description=SensorEntityDescription(
+                key="projected_savings",
+                name="Projected Savings",
+                icon="mdi:home-thermometer"),
+            lambda_measurement=const.LAMBDA_PROJECTED_PERCENT_SAVINGS,
+            native_unit_of_measurement='%',
+            suggested_display_precision=1,
+            device_class=None,
+            state_class=None
+        ),
         OptisparkSensorPostcode(
             coordinator=coordinator,
             entity_description=SensorEntityDescription(
