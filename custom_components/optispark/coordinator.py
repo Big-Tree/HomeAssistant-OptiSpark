@@ -18,6 +18,7 @@ from .api import (
     OptisparkApiClientError,
 )
 from . import const
+from . import get_entity
 from .const import LOGGER
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.helpers import entity_registry
@@ -67,7 +68,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         self,
         hass: HomeAssistant,
         client: OptisparkApiClient,
-        climate_entity: entity_registry.RegistryEntity,
+        climate_entity_id: entity_registry.RegistryEntity,
         postcode: str
     ) -> None:
         """Initialize."""
@@ -79,7 +80,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=10),
         )
         self._postcode = postcode
-        self.climate_entity = climate_entity
+        self.climate_entity_id = climate_entity_id
         self.results = {}
         self.last_update_time = 0
         self.update_lambda_interval = 60*60
@@ -93,19 +94,9 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def update_heat_pump_temperature(self):
         """Set the temperature of the heat pump using the value from lambda.
-
-        Accessing entities of other integrations does not seem to be supported.  The method we use
-        seems a bit dodgy.
         """
         temp: float = self.data[const.LAMBDA_TEMP]
-        domain: str = self.climate_entity.platform
-        entity_coordinator: DataUpdateCoordinator = self.hass.data[domain][self.climate_entity.config_entry_id]
-
-        # Get the entity via the entity coordinator
-        for update_callback, _ in entity_coordinator._listeners.values():
-            if update_callback.__self__.unique_id == self.climate_entity.unique_id:
-                entity = update_callback.__self__
-                break
+        entity = get_entity(self.hass, self.climate_entity_id)
 
         if entity.hvac_mode == HVACMode.HEAT_COOL:
             await entity.async_set_temperature(
