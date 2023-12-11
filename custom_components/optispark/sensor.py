@@ -63,24 +63,47 @@ async def async_setup_entry(hass, entry, async_add_devices):
             entity_description=SensorEntityDescription(
                 key="projected_savings",
                 name="Projected Savings",
-                icon="mdi:home-thermometer"),
+                icon="mdi:currency-gbp"),
             lambda_measurement=const.LAMBDA_PROJECTED_PERCENT_SAVINGS,
             native_unit_of_measurement='%',
             suggested_display_precision=1,
             device_class=None,
             state_class=None
         ),
-        OptisparkSensorPostcode(
+        OptisparkSensorParameter(
             coordinator=coordinator,
             entity_description=SensorEntityDescription(
                 key="postcode",
                 name="Postcode",
                 icon="mdi:map-marker"),
             lambda_measurement=None,
+            coordinator_parameter='postcode',
             device_class=None,
-            state_class=None
-        )]
-    )
+            state_class=None,
+        ),
+        OptisparkSensorParameter(
+            coordinator=coordinator,
+            entity_description=SensorEntityDescription(
+                key="heat_pump_power_usage",
+                name="Heat pump power usage",
+                icon="mdi:lightning-bolt"),
+            lambda_measurement=None,
+            native_unit_of_measurement='W',
+            coordinator_parameter='heat_pump_power_usage',
+            device_class=SensorDeviceClass.POWER,
+        ),
+        OptisparkSensorParameter(
+            coordinator=coordinator,
+            entity_description=SensorEntityDescription(
+                key="external_temperature",
+                name="External Temperature",
+                icon="mdi:thermometer"),
+            lambda_measurement=None,
+            native_unit_of_measurement='°C',
+            coordinator_parameter='external_temp',
+            device_class=SensorDeviceClass.TEMPERATURE,
+        ),
+    ])
 
 
 class OptisparkSensor(OptisparkEntity, SensorEntity):
@@ -91,6 +114,7 @@ class OptisparkSensor(OptisparkEntity, SensorEntity):
         coordinator: OptisparkDataUpdateCoordinator,
         entity_description: SensorEntityDescription,
         lambda_measurement: str,
+        coordinator_parameter: str = None,
         device_class: str = None,
         native_unit_of_measurement: str = None,
         suggested_display_precision: int = None,
@@ -99,7 +123,8 @@ class OptisparkSensor(OptisparkEntity, SensorEntity):
         """Initialize the sensor class."""
         super().__init__(coordinator)
         self.entity_description = entity_description
-        self.lambda_measurement = lambda_measurement
+        self._lambda_measurement = lambda_measurement
+        self._coordinator_parameter = coordinator_parameter
         self._device_class = device_class
         self._native_unit_of_measurement = native_unit_of_measurement
         self._suggested_display_precision = suggested_display_precision
@@ -131,7 +156,7 @@ class OptisparkSensor(OptisparkEntity, SensorEntity):
 
         Using a device_class may restrict the types that can be returned by this property.
         """
-        out = self.coordinator.data[self.lambda_measurement]
+        out = self.coordinator.data[self._lambda_measurement]
         LOGGER.debug('native_value()')
         return out
 
@@ -145,8 +170,8 @@ class OptisparkSensor(OptisparkEntity, SensorEntity):
         return self._state_class
 
 
-class OptisparkSensorPostcode(OptisparkSensor):
-    """optispark sensor class."""
+class OptisparkSensorParameter(OptisparkSensor):
+    """Uses a parameter of the coordinator as the native value instead of the data attribute."""
 
     @property
     def native_value(self) -> str:
@@ -154,4 +179,4 @@ class OptisparkSensorPostcode(OptisparkSensor):
 
         Using a device_class may restrict the types that can be returned by this property.
         """
-        return self.coordinator.postcode
+        return getattr(self.coordinator, self._coordinator_parameter)

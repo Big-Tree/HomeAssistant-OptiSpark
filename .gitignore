@@ -17,3 +17,4 @@ config/*
 !config/configuration.yaml
 
 homeassistant
+Session.vim
