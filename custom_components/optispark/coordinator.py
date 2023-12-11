@@ -99,7 +99,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         """
         temp: float = self.data[const.LAMBDA_TEMP]
         domain: str = self.climate_entity.platform
-        entity_coordinator: DataUpdateCoordinator = self.hass.data[domain][self.climate_entity.unique_id]
+        entity_coordinator: DataUpdateCoordinator = self.hass.data[domain][self.climate_entity.config_entry_id]
 
         # Get the entity via the entity coordinator
         for update_callback, _ in entity_coordinator._listeners.values():
