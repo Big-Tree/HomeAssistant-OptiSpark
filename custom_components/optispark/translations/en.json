@@ -5,7 +5,9 @@
                 "description": "Please enter your postcode for weather forecasts",
                 "data": {
                     "postcode": "Postcode",
-                    "climate_entity": "Select your climate entity"
+                    "climate_entity": "Select your climate entity",
+                    "heat_pump_power_entity": "Power usage of heat pump",
+                    "external_temp_entity": "(Optinal) External house temperature entity"
                 }
             }
         },

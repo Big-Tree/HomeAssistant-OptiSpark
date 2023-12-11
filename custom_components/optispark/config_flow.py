@@ -76,6 +76,20 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     'domain': 'climate'}
             }
         })
+        data_schema[vol.Required("heat_pump_power_entity")] = selector({
+            "entity": {
+                'filter': {
+                    'domain': 'sensor',
+                    'device_class': 'power'}
+            }
+        })
+        data_schema[vol.Optional("external_temp_entity")] = selector({
+            "entity": {
+                'filter': {
+                    'domain': 'sensor',
+                    'device_class': 'temperature'}
+            }
+        })
 
         return self.async_show_form(
             step_id="init",
