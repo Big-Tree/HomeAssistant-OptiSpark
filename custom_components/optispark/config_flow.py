@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.selector import selector
+from geopy.adapters import AioHTTPAdapter
+from geopy.geocoders import Nominatim
 
 from .api import (
-    OptisparkApiClient
+    OptisparkApiClientPostcodeError
 )
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 
 
 class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -37,33 +38,38 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow initialized by the user."""
         _errors = {}
         if user_input is not None:
-            await self._test_credentials(
-                postcode=user_input['postcode'],
-            )
-            return self.async_create_entry(
-                title='OptiSpark Entry',
-                data=user_input,
-            )
+            try:
+                postcode = await self._test_credentials(postcode=user_input['postcode'])
+                user_input['postcode'] = postcode  # Fix postcode formating
+                return self.async_create_entry(
+                    title='OptiSpark Entry',
+                    data=user_input,
+                )
+            except OptisparkApiClientPostcodeError as err:
+                LOGGER.warning(err)
+                _errors["base"] = "postcode"
 
-            #except OptisparkApiClientAuthenticationError as exception:
-            #    LOGGER.warning(exception)
-            #    _errors["base"] = "auth"
-            #except OptisparkApiClientCommunicationError as exception:
-            #    LOGGER.error(exception)
-            #    _errors["base"] = "connection"
-            #except OptisparkApiClientError as exception:
-            #    LOGGER.exception(exception)
-            #    _errors["base"] = "unknown"
-            #else:
-            #    return self.async_create_entry(
-            #        title=user_input[CONF_USERNAME],
-            #        data=user_input,
-            #    )
+        # Get post code from homeassistant
+        try:
+            async with Nominatim(
+                #user_agent="specify_your_app_name_here",
+                user_agent=self.flow_id,
+                adapter_factory=AioHTTPAdapter,
+            ) as geolocator:
+                location = await geolocator.reverse((
+                    self.hass.config.latitude,
+                    self.hass.config.longitude))
+                postcode = location.raw['address']['postcode']
+            if postcode == '' or postcode is None:
+                raise OptisparkApiClientPostcodeError()
+        except Exception as err:
+            LOGGER.warning(err)
+            postcode = ''
+            _errors["base"] = "postcode_homeassistant"
 
         data_schema = {
-            vol.Required('postcode'): str,
+            vol.Required('postcode', default=postcode): str,
         }
-
         data_schema[vol.Required("climate_entity")] = selector({
             "entity": {
                 'filter': {
@@ -78,14 +84,29 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def _test_credentials(self, postcode: str) -> None:
-        """Validate credentials."""
-        pass
+        """Use geopy to vilidate postcode.
 
-    async def _test_credentials_old(self, username: str, password: str) -> None:
-        """Validate credentials."""
-        client = OptisparkApiClient(
-            username=username,
-            password=password,
-            session=async_create_clientsession(self.hass),
-        )
-        await client.async_get_data()
+        Geopy will throw an exception or evaluate to none if something is wrong.
+        """
+        try:
+            async with Nominatim(
+                #user_agent="specify_your_app_name_here",
+                user_agent=self.flow_id,
+                adapter_factory=AioHTTPAdapter,
+            ) as geolocator:
+                location = await geolocator.geocode(postcode)
+                postcode = location.raw['name']
+            if postcode == '' or postcode is None:
+                raise OptisparkApiClientPostcodeError()
+            return postcode
+        except Exception:
+            raise OptisparkApiClientPostcodeError('Error validation postcode')
+
+    #async def _test_credentials_old(self, username: str, password: str) -> None:
+    #    """Validate credentials."""
+    #    client = OptisparkApiClient(
+    #        username=username,
+    #        password=password,
+    #        session=async_create_clientsession(self.hass),
+    #    )
+    #    await client.async_get_data()

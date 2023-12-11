@@ -50,6 +50,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         hass: HomeAssistant,
         client: OptisparkApiClient,
         climate_entity: entity_registry.RegistryEntity,
+        postcode: str
     ) -> None:
         """Initialize."""
         self.client = client
@@ -59,6 +60,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             name=const.DOMAIN,
             update_interval=timedelta(seconds=10),
         )
+        self._postcode = postcode
         self.climate_entity = climate_entity
         self.results = {}
         self.last_update_time = 0
@@ -69,7 +71,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             const.LAMBDA_HOUSE_CONFIG: None,
             const.LAMBDA_SET_POINT: 20.0,
             const.LAMBDA_TEMP_RANGE: 3.0,
-            const.LAMBDA_POSTCODE: 'SW118DD'}
+            const.LAMBDA_POSTCODE: self.postcode}
 
     async def update_heat_pump_temperature(self):
         """Set the temperature of the heat pump using the value from lambda.
@@ -123,6 +125,11 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         self._lambda_args = lambda_args
         self._lambda_update = True
         await self.async_request_update()
+
+    @property
+    def postcode(self):
+        """Postcode."""
+        return self._postcode
 
     @property
     def lambda_args(self):

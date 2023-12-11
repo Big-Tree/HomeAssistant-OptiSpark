@@ -57,6 +57,16 @@ async def async_setup_entry(hass, entry, async_add_devices):
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement='°C',
             suggested_display_precision=1
+        ),
+        OptisparkSensorPostcode(
+            coordinator=coordinator,
+            entity_description=SensorEntityDescription(
+                key="postcode",
+                name="Postcode",
+                icon="mdi:map-marker"),
+            lambda_measurement=None,
+            device_class=None,
+            state_class=None
         )]
     )
 
@@ -71,7 +81,8 @@ class OptisparkSensor(OptisparkEntity, SensorEntity):
         lambda_measurement: str,
         device_class: str = None,
         native_unit_of_measurement: str = None,
-        suggested_display_precision: int = None
+        suggested_display_precision: int = None,
+        state_class: SensorStateClass = SensorStateClass.MEASUREMENT
     ) -> None:
         """Initialize the sensor class."""
         super().__init__(coordinator)
@@ -80,6 +91,7 @@ class OptisparkSensor(OptisparkEntity, SensorEntity):
         self._device_class = device_class
         self._native_unit_of_measurement = native_unit_of_measurement
         self._suggested_display_precision = suggested_display_precision
+        self._state_class = state_class
 
     @property
     def suggested_display_precision(self):
@@ -118,4 +130,16 @@ class OptisparkSensor(OptisparkEntity, SensorEntity):
         If not None, the sensor is assumed to be numerical and will be displayed as a line-chart in
         the frontend instead of as discrete values.
         """
-        return SensorStateClass.MEASUREMENT
+        return self._state_class
+
+
+class OptisparkSensorPostcode(OptisparkSensor):
+    """optispark sensor class."""
+
+    @property
+    def native_value(self) -> str:
+        """The value of the sensor in the sensor's native_unit_of_measurement.
+
+        Using a device_class may restrict the types that can be returned by this property.
+        """
+        return self.coordinator.postcode
