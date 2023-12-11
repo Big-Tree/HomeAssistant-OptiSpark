@@ -2,7 +2,7 @@
     "config": {
         "step": {
             "init": {
-                "description": "Please enter your postcode so that the weather can be fetched",
+                "description": "Please enter your postcode for weather forecasts",
                 "data": {
                     "postcode": "Postcode",
                     "climate_entity": "Select your climate entity"
@@ -10,6 +10,8 @@
             }
         },
         "error": {
+            "postcode_homeassistant": "Unable to get postcode from homeassistant - enter manually",
+            "postcode": "Invalid Postcode",
             "auth": "Username/Password is wrong.",
             "connection": "Unable to connect to the server.",
             "unknown": "Unknown error occurred."
