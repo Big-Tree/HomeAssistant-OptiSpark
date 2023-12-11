@@ -25,6 +25,7 @@ from homeassistant.helpers import entity_registry
 from homeassistant.helpers import template
 
 
+
 def get_closest_time(lambda_results):
     """Get the closest matching time to now from the data set provided."""
     time_based_keys = [
@@ -93,8 +94,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             const.LAMBDA_POSTCODE: self.postcode}
 
     async def update_heat_pump_temperature(self):
-        """Set the temperature of the heat pump using the value from lambda.
-        """
+        """Set the temperature of the heat pump using the value from lambda."""
         temp: float = self.data[const.LAMBDA_TEMP]
         entity = get_entity(self.hass, self.climate_entity_id)
 
