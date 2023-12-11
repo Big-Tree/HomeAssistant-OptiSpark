@@ -24,8 +24,25 @@ from homeassistant.helpers import entity_registry
 from homeassistant.helpers import template
 
 
-def get_closest_time(my_data):
+def get_closest_time(lambda_results):
     """Get the closest matching time to now from the data set provided."""
+    time_based_keys = [
+        const.LAMBDA_BASE_DEMAND,
+        const.LAMBDA_PRICE,
+        const.LAMBDA_TEMP,
+        const.LAMBDA_OPTIMISED_DEMAND]
+    non_time_based_keys = [
+        const.LAMBDA_BASE_COST,
+        const.LAMBDA_OPTIMISED_COST,
+        const.LAMBDA_PROJECTED_PERCENT_SAVINGS]
+
+    # Convert to dictionary where time is the key
+    my_data = {}
+    for key in time_based_keys:
+        my_data[key] = {i['x']: i['y'] for i in lambda_results[key]}
+        for key in non_time_based_keys:
+            my_data[key] = lambda_results[key]
+
     # Convert time to dattime format
     times_str: list[str] = list(my_data['base_demand'].keys())
     times = [datetime.strptime(d, '%Y-%m-%d %H:%M') for d in times_str]
@@ -35,9 +52,10 @@ def get_closest_time(my_data):
     closest_time = times_str[min_idx]
 
     out = {}
-    for key in ['base_demand', 'prices', 'temps', 'optimised_demand']:
+    for key in time_based_keys:
         out[key] = my_data[key][closest_time]
-    for key in ['optimised_cost', 'base_cost']:
+
+    for key in non_time_based_keys:
         out[key] = my_data[key]
     return out
 
@@ -157,22 +175,15 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             if time.time() - self.last_update_time > self.update_lambda_interval or self._lambda_update:
                 self._lambda_update = False
-                lambda_results = await self.client.async_get_data(self.lambda_args)
+                self.lambda_results = await self.client.async_get_data(self.lambda_args)
 
-                # Convert to dictionary where time is the key
-                self.my_data = {}
-                for key in ['base_demand', 'prices', 'temps', 'optimised_demand']:
-                    self.my_data[key] = {i['x']: i['y'] for i in lambda_results[key]}
-                for key in ['optimised_cost', 'base_cost']:
-                    self.my_data[key] = lambda_results[key]
-
-                out = get_closest_time(self.my_data)
+                out = get_closest_time(self.lambda_results)
 
                 self.last_update_time = time.time()
                 #await self.update_heat_pump_temperature()
                 return out
             else:
-                out = get_closest_time(self.my_data)
+                out = get_closest_time(self.lambda_results)
                 LOGGER.debug('_asnyn_update_data()')
                 await self.update_heat_pump_temperature()
                 return out
