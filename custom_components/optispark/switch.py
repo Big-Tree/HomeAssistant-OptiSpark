@@ -54,7 +54,7 @@ class OptisparkSwitch(OptisparkEntity, SwitchEntity):
         self.coordinator.enable_integration(True)
         #self.enabled = True
         LOGGER.debug('switch on')
-        await self.coordinator.request_update()
+        await self.coordinator.async_request_update()
 
     async def async_turn_off(self, **_: any) -> None:
         """Turn off the switch."""
@@ -64,7 +64,7 @@ class OptisparkSwitch(OptisparkEntity, SwitchEntity):
         self.coordinator.enable_integration(False)
         LOGGER.debug('switch off')
         #self.enabled = False
-        await self.coordinator.request_update()
+        await self.coordinator.async_request_update()
     #
     #@property
     #def unique_id(self):
