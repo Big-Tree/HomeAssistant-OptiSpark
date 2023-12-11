@@ -5,9 +5,15 @@
                 "description": "Please enter your postcode for weather forecasts",
                 "data": {
                     "postcode": "Postcode",
-                    "climate_entity": "Select your climate entity",
-                    "heat_pump_power_entity": "Power usage of heat pump",
-                    "external_temp_entity": "(Optinal) External house temperature entity"
+                    "climate_entity_id": "Heat pump",
+                    "heat_pump_power_entity_id": "Power usage of heat pump",
+                    "external_temp_entity_id": "(Optinal) External house temperature"
+                }
+            },
+            "accept":{
+                "description": "Help us develop the integration!  Share your anonymised data with us:\n  - Heat pump power usage\n  - Temperature data",
+                "data": {
+                    "accept_agreement": ""
                 }
             }
         },
@@ -16,7 +22,9 @@
             "postcode": "Invalid Postcode",
             "auth": "Username/Password is wrong.",
             "connection": "Unable to connect to the server.",
-            "unknown": "Unknown error occurred."
+            "unknown": "Unknown error occurred.",
+            "unit": "The power sensor does not use supported units: (W, kW)",
+            "accept_agreement": "Sorry, we need the data to be able to calculate the heating profile and to improve our integration."
         }
     }
 }

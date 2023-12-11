@@ -37,6 +37,11 @@ class OptisparkApiClientPostcodeError(
     """Exception to indicate invalid postcode."""
 
 
+class OptisparkApiClientUnitError(
+    OptisparkApiClientError
+):
+    """Exception to indicate unit error."""
+
 class OptisparkApiClient:
     """Sample API Client."""
 

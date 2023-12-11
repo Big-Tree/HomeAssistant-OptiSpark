@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass=hass,
         client=OptisparkApiClient(
             session=async_get_clientsession(hass)),
-        climate_entity_id=entry.data['climate_entity'],
+        climate_entity_id=entry.data['climate_entity_id'],
         postcode=entry.data['postcode'],
     )
     # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
