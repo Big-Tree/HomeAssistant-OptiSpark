@@ -178,6 +178,8 @@ class LambdaUpdateHandler:
         time_str = self.lambda_results[const.LAMBDA_OPTIMISED_DEMAND][-1]['x']
         self.expire_time = datetime.strptime(time_str, '%Y-%m-%d %H:%M')
         self.expire_time = self.expire_time.replace(tzinfo=self.london_tz)
+        # The backend will currently only update upon a new day. FIX!
+        self.expire_time = self.expire_time + timedelta(hours=1, minutes=30)
         LOGGER.debug(f'---------- self.expire_time: {self.expire_time}')
 
     def get_closest_time(self):
