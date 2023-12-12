@@ -72,6 +72,8 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     postcode=user_input['postcode'],
                     heat_pump_power_entity_id=user_input['heat_pump_power_entity_id'])
                 user_input['postcode'] = postcode  # Fix postcode formating
+                if 'external_temp_entity_id' not in user_input:
+                    user_input['external_temp_entity_id'] = None
 
                 self.user_input_init = user_input
                 return await self.async_step_accept(user_input)

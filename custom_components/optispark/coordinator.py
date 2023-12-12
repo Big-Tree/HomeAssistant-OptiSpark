@@ -117,7 +117,10 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
     @property
     def external_temp(self):
         """External house temperature."""
-        return get_entity(self.hass, self._external_temp_entity_id).native_value
+        if self._external_temp_entity_id is None:
+            return None
+        else:
+            return get_entity(self.hass, self._external_temp_entity_id).native_value
 
     @property
     def lambda_args(self):
