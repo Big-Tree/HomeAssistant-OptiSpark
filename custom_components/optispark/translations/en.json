@@ -11,7 +11,7 @@
                 }
             },
             "accept":{
-                "description": "Help us develop the integration!  Share your anonymised data with us:\n  - Heat pump power usage\n  - Temperature data",
+                "description": "Help us develop the integration!  Share your anonymised data with us:\n  - Heat pump power usage\n  - Temperature data\n - Postcode (for weather and electricity price data)",
                 "data": {
                     "accept_agreement": ""
                 }
