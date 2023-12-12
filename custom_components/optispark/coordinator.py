@@ -83,9 +83,9 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=10),
         )
         self._postcode = postcode
-        self._climate_entity = get_entity(self.hass, climate_entity_id)
-        self._heat_pump_power_entity = get_entity(self.hass, heat_pump_power_entity_id)
-        self._external_temp_entity = get_entity(self.hass, external_temp_entity_id)
+        self._climate_entity_id = climate_entity_id
+        self._heat_pump_power_entity_id = heat_pump_power_entity_id
+        self._external_temp_entity_id = external_temp_entity_id
         self.results = {}
         self.last_update_time = 0
         self.update_lambda_interval = 60*60
@@ -100,13 +100,14 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
     async def update_heat_pump_temperature(self):
         """Set the temperature of the heat pump using the value from lambda."""
         temp: float = self.data[const.LAMBDA_TEMP]
+        climate_entity = get_entity(self.hass, self._climate_entity_id)
 
-        if self._climate_entity.hvac_mode == HVACMode.HEAT_COOL:
-            await self._climate_entity.async_set_temperature(
+        if climate_entity.hvac_mode == HVACMode.HEAT_COOL:
+            await climate_entity.async_set_temperature(
                 target_temp_low=temp,
-                target_temp_high=self._climate_entity.target_temperature_high)
+                target_temp_high=climate_entity.target_temperature_high)
         else:
-            await self._climate_entity.async_set_temperature(temperature=temp)
+            await climate_entity.async_set_temperature(temperature=temp)
 
     def enable_integration(self, enable: bool):
         """Enable/Disable all entities other than the switch."""
@@ -146,12 +147,12 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
     @property
     def heat_pump_power_usage(self):
         """Power usage of the heat pump."""
-        return self._heat_pump_power_entity.native_value
+        return get_entity(self.hass, self._heat_pump_power_entity_id).native_value
 
     @property
     def external_temp(self):
         """External house temperature."""
-        return self._external_temp_entity.native_value
+        return get_entity(self.hass, self._external_temp_entity_id).native_value
 
     @property
     def lambda_args(self):
