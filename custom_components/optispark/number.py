@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
-from homeassistant.components.number.const import NumberDeviceClass
+#from homeassistant.components.number.const import NumberDeviceClass
 
 from .coordinator import OptisparkDataUpdateCoordinator
 from .entity import OptisparkEntity
@@ -41,20 +41,20 @@ async def async_setup_entry(hass, entry, async_add_devices):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_devices(
         [
-            OptisparkNumber(
-                coordinator=coordinator,
-                entity_description=NumberEntityDescription(
-                    key="target_temperature",
-                    name="Target Temperature",
-                    icon="mdi:home-thermometer"),
-                native_value=21,
-                native_step=0.5,
-                native_max_value=26,
-                native_min_value=14,
-                lambda_parameter=const.LAMBDA_SET_POINT,
-                device_class=NumberDeviceClass.TEMPERATURE,
-                native_unit_of_measurement='°C'
-            ),
+            #OptisparkNumber(
+            #    coordinator=coordinator,
+            #    entity_description=NumberEntityDescription(
+            #        key="target_temperature",
+            #        name="Target Temperature",
+            #        icon="mdi:home-thermometer"),
+            #    native_value=21,
+            #    native_step=0.5,
+            #    native_max_value=26,
+            #    native_min_value=14,
+            #    lambda_parameter=const.LAMBDA_SET_POINT,
+            #    device_class=NumberDeviceClass.TEMPERATURE,
+            #    native_unit_of_measurement='°C'
+            #),
             OptisparkNumber(
                 coordinator=coordinator,
                 entity_description=NumberEntityDescription(

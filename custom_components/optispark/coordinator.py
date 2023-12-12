@@ -105,6 +105,11 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         return self._postcode
 
     @property
+    def house_temperature(self):
+        """Power usage of the heat pump."""
+        return get_entity(self.hass, self._climate_entity_id).current_temperature
+
+    @property
     def heat_pump_power_usage(self):
         """Power usage of the heat pump."""
         return get_entity(self.hass, self._heat_pump_power_entity_id).native_value
