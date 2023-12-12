@@ -7,7 +7,7 @@ from homeassistant.components.sensor.const import SensorDeviceClass
 from . import const
 from .coordinator import OptisparkDataUpdateCoordinator
 from .entity import OptisparkEntity
-from .const import LOGGER
+#from .const import LOGGER
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
@@ -157,7 +157,6 @@ class OptisparkSensor(OptisparkEntity, SensorEntity):
         Using a device_class may restrict the types that can be returned by this property.
         """
         out = self.coordinator.data[self._lambda_measurement]
-        LOGGER.debug('native_value()')
         return out
 
     @property

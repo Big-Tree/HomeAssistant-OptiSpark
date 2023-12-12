@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import timedelta, datetime
-import time
+import pytz
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import (
@@ -23,43 +23,6 @@ from .const import LOGGER
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import template
-
-
-
-def get_closest_time(lambda_results):
-    """Get the closest matching time to now from the data set provided."""
-    time_based_keys = [
-        const.LAMBDA_BASE_DEMAND,
-        const.LAMBDA_PRICE,
-        const.LAMBDA_TEMP,
-        const.LAMBDA_OPTIMISED_DEMAND]
-    non_time_based_keys = [
-        const.LAMBDA_BASE_COST,
-        const.LAMBDA_OPTIMISED_COST,
-        const.LAMBDA_PROJECTED_PERCENT_SAVINGS]
-
-    # Convert to dictionary where time is the key
-    my_data = {}
-    for key in time_based_keys:
-        my_data[key] = {i['x']: i['y'] for i in lambda_results[key]}
-        for key in non_time_based_keys:
-            my_data[key] = lambda_results[key]
-
-    # Convert time to dattime format
-    times_str: list[str] = list(my_data['base_demand'].keys())
-    times = [datetime.strptime(d, '%Y-%m-%d %H:%M') for d in times_str]
-    now = datetime.now()
-    absolute_difference = [abs(getattr(t-now, 'total_seconds')()) for t in times]
-    min_idx = absolute_difference.index(min(absolute_difference))
-    closest_time = times_str[min_idx]
-
-    out = {}
-    for key in time_based_keys:
-        out[key] = my_data[key][closest_time]
-
-    for key in non_time_based_keys:
-        out[key] = my_data[key]
-    return out
 
 
 class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
@@ -86,20 +49,17 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         self._climate_entity_id = climate_entity_id
         self._heat_pump_power_entity_id = heat_pump_power_entity_id
         self._external_temp_entity_id = external_temp_entity_id
-        self.results = {}
-        self.last_update_time = 0
-        self.update_lambda_interval = 60*60
         self.switched_enabled = True
-        self._lambda_update = True
         self._lambda_args = {
             const.LAMBDA_HOUSE_CONFIG: None,
             const.LAMBDA_SET_POINT: 20.0,
             const.LAMBDA_TEMP_RANGE: 3.0,
             const.LAMBDA_POSTCODE: self.postcode}
+        self._lambda_update_handler = LambdaUpdateHandler()
 
-    async def update_heat_pump_temperature(self):
+    async def update_heat_pump_temperature(self, data):
         """Set the temperature of the heat pump using the value from lambda."""
-        temp: float = self.data[const.LAMBDA_TEMP]
+        temp: float = data[const.LAMBDA_TEMP]
         climate_entity = get_entity(self.hass, self._climate_entity_id)
 
         if climate_entity.hvac_mode == HVACMode.HEAT_COOL:
@@ -136,7 +96,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         To be called from entities.
         """
         self._lambda_args = lambda_args
-        self._lambda_update = True
+        self._lambda_update_handler.manual_update = True
         await self.async_request_update()
 
     @property
@@ -178,21 +138,82 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             # Integration is disabled, don't call lambda
             return self.data
         try:
-            if time.time() - self.last_update_time > self.update_lambda_interval or self._lambda_update:
-                self._lambda_update = False
-                self.lambda_results = await self.client.async_get_data(self.lambda_args)
-
-                out = get_closest_time(self.lambda_results)
-
-                self.last_update_time = time.time()
-                #await self.update_heat_pump_temperature()
-                return out
-            else:
-                out = get_closest_time(self.lambda_results)
-                LOGGER.debug('_asnyn_update_data()')
-                await self.update_heat_pump_temperature()
-                return out
+            data = await self._lambda_update_handler(self.client, self.lambda_args)
+            await self.update_heat_pump_temperature(data)
+            return data
         except OptisparkApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
         except OptisparkApiClientError as exception:
             raise UpdateFailed(exception) from exception
+
+
+class LambdaUpdateHandler:
+    """Returns the lambda data for the current time.
+
+    It will call the lambda function once a day and store the results.
+    """
+
+    def __init__(self):
+        """Init."""
+        self.london_tz = pytz.timezone('Europe/London')
+        self.expire_time = datetime(1, 1, 1, 0, 0, 0, tzinfo=self.london_tz)  # Already expired
+        self.manual_update = False
+
+    async def __call__(self, client: OptisparkApiClient, lambda_args):
+        """Return lambda data for the current time."""
+        london_time_now = datetime.now(self.london_tz)
+        # This probably won't result in a smooth transition
+        if self.expire_time - london_time_now < timedelta(hours=0) or self.manual_update:
+            await self.call_lambda(client, lambda_args)
+        return self.get_closest_time()
+
+    async def call_lambda(self, client: OptisparkApiClient, lambda_args):
+        """Fetch data from AWS Lambda.
+
+        Records the when the data expires (is no longer relevant).
+        """
+        LOGGER.debug(f'********** self.expire_time: {self.expire_time}')
+        self.manual_update = False
+        self.lambda_results = await client.async_get_data(lambda_args)
+        time_str = self.lambda_results[const.LAMBDA_OPTIMISED_DEMAND][-1]['x']
+        self.expire_time = datetime.strptime(time_str, '%Y-%m-%d %H:%M')
+        self.expire_time = self.expire_time.replace(tzinfo=self.london_tz)
+        LOGGER.debug(f'---------- self.expire_time: {self.expire_time}')
+
+    def get_closest_time(self):
+        """Get the closest matching time to now from the lambda data set provided."""
+        time_based_keys = [
+            const.LAMBDA_BASE_DEMAND,
+            const.LAMBDA_PRICE,
+            const.LAMBDA_TEMP,
+            const.LAMBDA_OPTIMISED_DEMAND]
+        non_time_based_keys = [
+            const.LAMBDA_BASE_COST,
+            const.LAMBDA_OPTIMISED_COST,
+            const.LAMBDA_PROJECTED_PERCENT_SAVINGS]
+
+        # Convert to dictionary where time is the key
+        my_data = {}
+        for key in time_based_keys:
+            my_data[key] = {i['x']: i['y'] for i in self.lambda_results[key]}
+            for key in non_time_based_keys:
+                my_data[key] = self.lambda_results[key]
+
+        # Convert time to dattime format
+        times_str: list[str] = list(my_data['base_demand'].keys())
+        times = [datetime.strptime(d, '%Y-%m-%d %H:%M') for d in times_str]
+        now = datetime.now()
+        absolute_difference = [abs(getattr(t-now, 'total_seconds')()) for t in times]
+        min_idx = absolute_difference.index(min(absolute_difference))
+        closest_time = times_str[min_idx]
+
+        out = {}
+        for key in time_based_keys:
+            out[key] = my_data[key][closest_time]
+
+        for key in non_time_based_keys:
+            out[key] = my_data[key]
+        return out
+
+
+
