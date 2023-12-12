@@ -67,7 +67,11 @@ class OptisparkApiClient:
         if errors['success'] is False:
             LOGGER.debug(f'OptisparkApiClientLambdaError: {errors["error_message"]}')
             raise OptisparkApiClientLambdaError(errors['error_message'])
-        results['projected_percent_savings'] = results['base_cost']/results['optimised_cost']*100 - 100
+        if results['optimised_cost'] == 0:
+            # Heating isn't active.  Should the savings be 0?
+            results['projected_percent_savings'] = 100
+        else:
+            results['projected_percent_savings'] = results['base_cost']/results['optimised_cost']*100 - 100
         return results
 
     async def _api_wrapper(
