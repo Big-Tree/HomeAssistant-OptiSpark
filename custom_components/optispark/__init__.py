@@ -14,6 +14,7 @@ from homeassistant.helpers.entity_registry import RegistryEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .api import OptisparkApiClient
 from .const import DOMAIN
+from .const import LOGGER
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -66,7 +67,16 @@ def get_entity(hass: HomeAssistant, entity_id: str):
     seems a bit dodgy.
     """
     entity_reg: RegistryEntry = entity_registry.async_get(hass).async_get(entity_id)
-    domain: str = entity_reg.platform
+    # Lets get the domain name via the device id
+    from homeassistant.helpers.device_registry import DeviceRegistry
+    from homeassistant.helpers import device_registry
+    device_id = entity_reg.device_id
+    device_reg: DeviceRegistry = device_registry.async_get(hass).async_get(device_id)
+    domain: str = list(device_reg.identifiers)[0][0]
+    #domain: str = entity_reg.platform
+    LOGGER.info(f'entity_id: {entity_id}')
+    LOGGER.info(f'domain: {domain}')
+    LOGGER.info(f'dir(hass.data): {dir(hass.data)}')
     entity_coordinator: DataUpdateCoordinator = hass.data[domain][entity_reg.config_entry_id]
 
     # Get the entity via the entity coordinator
