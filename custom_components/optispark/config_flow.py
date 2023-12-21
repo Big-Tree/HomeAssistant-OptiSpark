@@ -103,8 +103,12 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             errors["base"] = "postcode_homeassistant"
 
         data_schema = {
-            vol.Required('postcode', default=postcode): str,
+            vol.Required('username', default=get_username(self.hass)): str,
+            #vol.Required('username'): str,
         }
+
+        data_schema[vol.Required('postcode', default=postcode)] = str
+
         data_schema[vol.Required("climate_entity_id")] = selector({
             "entity": {
                 'filter': {

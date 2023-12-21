@@ -2,8 +2,9 @@
     "config": {
         "step": {
             "init": {
-                "description": "Please enter your postcode for weather forecasts",
+                "description": "Information for the optimisation algorithm:",
                 "data": {
+                    "username": "Username",
                     "postcode": "Postcode",
                     "climate_entity_id": "Heat pump",
                     "heat_pump_power_entity_id": "Power usage of heat pump",

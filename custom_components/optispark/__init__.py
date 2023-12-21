@@ -83,3 +83,14 @@ def get_entity(hass: HomeAssistant, entity_id: str):
     for update_callback, _ in entity_coordinator._listeners.values():
         if update_callback.__self__.unique_id == entity_reg.unique_id:
             return update_callback.__self__
+
+
+def get_username(hass):
+    """Attempt to get the username.
+
+    Surely there is a better way than this."""
+    try:
+        return list(hass.data['person'][1].data.keys())[0]
+    except Exception:
+        return None
+
