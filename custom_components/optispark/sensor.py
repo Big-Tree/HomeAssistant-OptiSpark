@@ -156,8 +156,10 @@ class OptisparkSensor(OptisparkEntity, SensorEntity):
 
         Using a device_class may restrict the types that can be returned by this property.
         """
-        out = self.coordinator.data[self._lambda_measurement]
-        return out
+        if self.coordinator.available:
+            return self.coordinator.data[self._lambda_measurement]
+        else:
+            return None
 
     @property
     def state_class(self):
@@ -178,4 +180,7 @@ class OptisparkSensorParameter(OptisparkSensor):
 
         Using a device_class may restrict the types that can be returned by this property.
         """
-        return getattr(self.coordinator, self._coordinator_parameter)
+        if self.coordinator.available:
+            return getattr(self.coordinator, self._coordinator_parameter)
+        else:
+            return None

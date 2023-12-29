@@ -2,14 +2,15 @@
 from __future__ import annotations
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
+from homeassistant.helpers import entity_registry
 
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN, LOGGER, SWITCH_KEY
 from .coordinator import OptisparkDataUpdateCoordinator
 from .entity import OptisparkEntity
 
 ENTITY_DESCRIPTIONS = (
     SwitchEntityDescription(
-        key="enable_optispark",
+        key=SWITCH_KEY,
         name="Enable Optispark",
         icon="mdi:lightning-bolt-circle",
     ),
@@ -39,7 +40,21 @@ class OptisparkSwitch(OptisparkEntity, SwitchEntity):
         """Initialize the switch class."""
         super().__init__(coordinator)
         self.entity_description = entity_description
+
+        # If the switch has previously disabled the integration, turn switch off
         self._is_on = True
+        entities = self.coordinator.get_optispark_entities()
+        for entity in entities:
+            if entity.disabled_by == entity_registry.RegistryEntryDisabler.INTEGRATION:
+                self.enable_disable_integration(False)
+                break
+        if self._is_on:
+            self.enable_disable_integration(True)
+
+    def enable_disable_integration(self, enable: bool):
+        """Enable/Disable the entire integration."""
+        self._is_on = enable
+        self.coordinator.enable_disable_integration(enable)
 
     @property
     def is_on(self) -> bool:
@@ -48,25 +63,12 @@ class OptisparkSwitch(OptisparkEntity, SwitchEntity):
 
     async def async_turn_on(self, **_: any) -> None:
         """Turn on the switch."""
-        self._is_on = True
-        #self.coordinator.enable_switch = True
-        #self.coordinator._available = True
-        self.coordinator.enable_integration(True)
-        #self.enabled = True
+        self.enable_disable_integration(True)
         LOGGER.debug('switch on')
         await self.coordinator.async_request_update()
 
     async def async_turn_off(self, **_: any) -> None:
         """Turn off the switch."""
-        self._is_on = False
-        #self.coordinator.enable_switch = False
-        #self.coordinator._available = False
-        self.coordinator.enable_integration(False)
+        self.enable_disable_integration(False)
         LOGGER.debug('switch off')
-        #self.enabled = False
         await self.coordinator.async_request_update()
-    #
-    #@property
-    #def unique_id(self):
-    #    """Returns a unique ID for the sensor."""
-    #    return 'sensor_id_switch'

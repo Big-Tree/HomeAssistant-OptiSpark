@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import timedelta, datetime
 import pytz
+import traceback
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import (
@@ -19,10 +20,15 @@ from .api import (
 )
 from . import const
 from . import get_entity
+from . import get_history
 from .const import LOGGER
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import template
+
+
+class OptisparkSetTemperatureError(Exception):
+    """Error while setting the temperature of the heat pump."""
 
 
 class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
@@ -35,6 +41,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         climate_entity_id: str,
         heat_pump_power_entity_id: str,
         external_temp_entity_id: str,
+        user_hash: str,
         postcode: str
     ) -> None:
         """Initialize."""
@@ -46,48 +53,74 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=10),
         )
         self._postcode = postcode
+        self._user_hash = user_hash
         self._climate_entity_id = climate_entity_id
         self._heat_pump_power_entity_id = heat_pump_power_entity_id
         self._external_temp_entity_id = external_temp_entity_id
-        self.switched_enabled = True
+        self._switch_enabled = False  # The switch will set this at startup
+        self._available = False
         self._lambda_args = {
             const.LAMBDA_HOUSE_CONFIG: None,
             const.LAMBDA_SET_POINT: 20.0,
             const.LAMBDA_TEMP_RANGE: 3.0,
             const.LAMBDA_POSTCODE: self.postcode}
-        self._lambda_update_handler = LambdaUpdateHandler()
+        self._lambda_update_handler = LambdaUpdateHandler(
+            self.hass,
+            self._climate_entity_id,
+            self._heat_pump_power_entity_id,
+            self._external_temp_entity_id,
+            self._user_hash)
 
     async def update_heat_pump_temperature(self, data):
         """Set the temperature of the heat pump using the value from lambda."""
         temp: float = data[const.LAMBDA_TEMP]
         climate_entity = get_entity(self.hass, self._climate_entity_id)
 
-        if climate_entity.hvac_mode == HVACMode.HEAT_COOL:
-            await climate_entity.async_set_temperature(
-                target_temp_low=temp,
-                target_temp_high=climate_entity.target_temperature_high)
-        else:
-            await climate_entity.async_set_temperature(temperature=temp)
+        try:
+            if climate_entity.hvac_mode == HVACMode.HEAT_COOL:
+                await climate_entity.async_set_temperature(
+                    target_temp_low=temp,
+                    target_temp_high=climate_entity.target_temperature_high)
+            else:
+                await climate_entity.async_set_temperature(temperature=temp)
+        except Exception as err:
+            LOGGER.error(traceback.format_exc())
+            raise OptisparkSetTemperatureError(err)
 
-    def enable_integration(self, enable: bool):
-        """Enable/Disable all entities other than the switch."""
+    def get_optispark_entities(self, include_switch=True) -> list[RegistryEntry]:
+        """Get all entities registered to this integration.
+
+        If include_switch is False, it won't be included in the list of entities returned.
+        """
         entity_register: EntityRegistry = entity_registry.async_get(self.hass)
         device_id: str = template.device_id(self.hass, const.NAME)
         entities: list[RegistryEntry] = entity_registry.async_entries_for_device(
             entity_register,
             device_id,
             include_disabled_entities=True)
+        if include_switch is False:
+            # Remove the switch from the list so it doesn't get disabled
+            for idx, entity in enumerate(entities):
+                if entity.entity_id == 'switch.' + const.SWITCH_KEY:
+                    idx_store = idx
+            del entities[idx_store]
+        return entities
 
-        # Remove the switch from the list so it doesn't get disabled
-        for idx, entity in enumerate(entities):
-            if entity.entity_id == 'switch.enable_optispark':
-                idx_store = idx
-        del entities[idx_store]
-
+    def enable_disable_entities(self, entities: list[RegistryEntry], enable: bool):
+        """Enable/Disable all entities given in the list."""
+        entity_register: EntityRegistry = entity_registry.async_get(self.hass)
         enable_lookup = {True: None, False: entity_registry.RegistryEntryDisabler.INTEGRATION}
         for entity in entities:
             entity_register.async_update_entity(entity.entity_id, disabled_by=enable_lookup[enable])
-        #self._available = enable
+
+    def enable_disable_integration(self, enable: bool):
+        """Enable/Disable all entities other than the switch."""
+        entities = self.get_optispark_entities(include_switch=False)
+        self.enable_disable_entities(entities, enable)
+        self._switch_enabled = enable
+        if enable is False:
+            # The coordinator is available once data is fetched
+            self._available = False
         #self.always_update = enable
 
     async def async_set_lambda_args(self, lambda_args):
@@ -107,7 +140,9 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
     @property
     def house_temperature(self):
         """Power usage of the heat pump."""
-        return get_entity(self.hass, self._climate_entity_id).current_temperature
+        entity = get_entity(self.hass, self._climate_entity_id)
+        out = entity.current_temperature
+        return out
 
     @property
     def heat_pump_power_usage(self):
@@ -127,6 +162,11 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         """Returns the lamba arguments."""
         return self._lambda_args
 
+    @property
+    def available(self):
+        """Is there data available for the entities."""
+        return self._available
+
     async def async_request_update(self):
         """Request home assistant to update all its values.
 
@@ -142,12 +182,13 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         Returns the current setting for the heat pump for the current moment.
         Entire days heat pump profile will be stored if it's out of date.
         """
-        if self.switched_enabled is False:
+        if self._switch_enabled is False:
             # Integration is disabled, don't call lambda
             return self.data
         try:
             data = await self._lambda_update_handler(self.client, self.lambda_args)
             await self.update_heat_pump_temperature(data)
+            self._available = True
             return data
         except OptisparkApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
@@ -161,8 +202,14 @@ class LambdaUpdateHandler:
     It will call the lambda function once a day and store the results.
     """
 
-    def __init__(self):
+    def __init__(self, hass, climate_entity_id, heat_pump_power_entity_id, external_temp_entity_id,
+                 user_hash):
         """Init."""
+        self.hass = hass
+        self.climate_entity_id = climate_entity_id
+        self.heat_pump_power_entity_id = heat_pump_power_entity_id
+        self.external_temp_entity_id = external_temp_entity_id
+        self.user_hash = user_hash
         self.london_tz = pytz.timezone('Europe/London')
         self.expire_time = datetime(1, 1, 1, 0, 0, 0, tzinfo=self.london_tz)  # Already expired
         self.manual_update = False
@@ -182,7 +229,15 @@ class LambdaUpdateHandler:
         """
         LOGGER.debug(f'********** self.expire_time: {self.expire_time}')
         self.manual_update = False
-        self.lambda_results = await client.async_get_data(lambda_args)
+        dynamo_data = await get_history(
+            hass=self.hass,
+            history_days=1,
+            climate_entity_id=self.climate_entity_id,
+            heat_pump_power_entity_id=self.heat_pump_power_entity_id,
+            external_temp_entity_id=self.external_temp_entity_id,
+            user_hash=self.user_hash)
+
+        self.lambda_results = await client.async_get_data(lambda_args, dynamo_data)
         time_str = self.lambda_results[const.LAMBDA_OPTIMISED_DEMAND][-1]['x']
         self.expire_time = datetime.strptime(time_str, '%Y-%m-%d %H:%M')
         self.expire_time = self.expire_time.replace(tzinfo=self.london_tz)

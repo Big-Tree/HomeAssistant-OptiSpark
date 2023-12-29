@@ -8,7 +8,7 @@
                     "postcode": "Postcode",
                     "climate_entity_id": "Heat pump",
                     "heat_pump_power_entity_id": "Power usage of heat pump",
-                    "external_temp_entity_id": "(Optinal) External house temperature"
+                    "external_temp_entity_id": "(Optional) External house temperature"
                 }
             },
             "accept":{
@@ -23,9 +23,12 @@
             "postcode": "Invalid Postcode",
             "auth": "Username/Password is wrong.",
             "connection": "Unable to connect to the server.",
+            "optispark_timeout_error": "Connection timed out, try again",
+            "optispark_communication_error": "Unknown communication error",
             "unknown": "Unknown error occurred.",
             "unit": "The power sensor does not use supported units: (W, kW)",
-            "accept_agreement": "Sorry, we need the data to be able to calculate the heating profile and to improve our integration."
+            "get_entity": "Error accessing heat pump, please post logs: https://github.com/Big-Tree/HomeAssistant-OptiSpark/issues/20",
+            "accept_agreement": "Sorry, we need the data to calculate the heating profile and to improve our integration."
         }
     }
 }

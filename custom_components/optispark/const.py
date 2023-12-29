@@ -5,7 +5,7 @@ LOGGER: Logger = getLogger(__package__)
 
 NAME = "Optispark"
 DOMAIN = "optispark"
-VERSION = "0.0.0"
+VERSION = "0.0.3"
 ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
 
 LAMBDA_TEMP = 'temps'
@@ -20,3 +20,10 @@ LAMBDA_SET_POINT = 'set_point'
 LAMBDA_TEMP_RANGE = 'temp_range'
 LAMBDA_POSTCODE = 'postcode'
 LAMBDA_HOUSE_CONFIG = 'house_config'
+
+HISTORY_DAYS = 7
+DATABASE_COLUMN_SENSOR_HEAT_PUMP_POWER = 'heat_pump_power'
+DATABASE_COLUMN_SENSOR_EXTERNAL_TEMPERATURE = 'external_temperature'
+DATABASE_COLUMN_SENSOR_CLIMATE_ENTITY = 'climate_entity'
+
+SWITCH_KEY = 'enable_optispark'

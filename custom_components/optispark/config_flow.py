@@ -3,16 +3,25 @@ from __future__ import annotations
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import selector
 from geopy.adapters import AioHTTPAdapter
 from geopy.geocoders import Nominatim
+import hashlib
+import traceback
+from . import get_history
 
 from .api import (
     OptisparkApiClientPostcodeError,
-    OptisparkApiClientUnitError
+    OptisparkApiClientUnitError,
+    OptisparkApiClient,
+    OptisparkApiClientTimeoutError,
+    OptisparkApiClientCommunicationError,
+    OptisparkApiClientError
 )
+from . import OptisparkGetEntityError
 from .const import DOMAIN, LOGGER
-from . import get_entity
+from . import const, get_entity, get_username
 
 
 class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -20,34 +29,54 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self, *args, **kwargs):
         """Init."""
-        self._got_here = False
+        self._been_here_before = False
         super().__init__(*args, **kwargs)
-
-    VERSION = 1
-
-    async def async_step_entity(
-        self,
-        user_input: dict | None = None,
-    ) -> config_entries.FlowResult:
-        """Handle a flow initialized by the user."""
 
     async def async_step_user(self, user_input: dict | None = None) -> config_entries.FlowResult:
         """Handle a flow initialized by the user."""
-        self._got_here = False
+        self._been_here_before = False
         return await self.async_step_init(user_input)
 
     async def async_step_accept(self, user_input: dict | None = None, reject=False) -> config_entries.FlowResult:
         """Ask user to accept data usage."""
         errors = {}
-        if self._got_here is True:
-            errors['base'] = 'accept_agreement'
         if 'accept_agreement' in user_input:
             if user_input['accept_agreement'] == ['Accept']:
-                user_input_out = self.user_input_init
-                user_input_out['accept_agreement'] = user_input['accept_agreement']
-                return self.async_create_entry(
-                    title='OptiSpark Entry',
-                    data=user_input_out)
+                tmp = self.user_input_init
+                tmp['accept_agreement'] = user_input['accept_agreement']
+                user_input = tmp
+
+                user_hash = f'{user_input["username"]}_{self.hass.config.latitude}_{self.hass.config.longitude}'
+                user_hash = hashlib.sha256(user_hash.encode('utf-8')).hexdigest()
+                user_input['user_hash'] = user_hash
+
+                # Upload history
+                # Add an option to lambda to only upload history
+                # I think we have to do the longer history here
+                dynamo_data = await get_history(
+                    hass=self.hass,
+                    history_days=const.HISTORY_DAYS,
+                    climate_entity_id=user_input['climate_entity_id'],
+                    heat_pump_power_entity_id=user_input['heat_pump_power_entity_id'],
+                    external_temp_entity_id=user_input['external_temp_entity_id'],
+                    user_hash=user_hash)
+                LOGGER.debug('************ Uploading history ***********')
+                tmp_client = OptisparkApiClient(
+                    session=async_get_clientsession(self.hass))
+                try:
+                    await tmp_client.upload_history(dynamo_data)
+                except OptisparkApiClientTimeoutError:
+                    errors['base'] = 'optispark_timeout_error'
+                except OptisparkApiClientCommunicationError:
+                    errors['base'] = 'optispark_communication_error'
+                except OptisparkApiClientError:
+                    errors['base'] = 'optispark_communication_error'
+                LOGGER.debug('************ Upload complete ***********')
+
+                if errors == {}:
+                    return self.async_create_entry(
+                        title='OptiSpark Entry',
+                        data=user_input)
             else:
                 errors['base'] = 'accept_agreement'
         data_schema = {}
@@ -56,7 +85,9 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 "options": ['Accept'],
                 "multiple": True}
         })
-        self._got_here = True
+        if self._been_here_before is True and errors == {}:
+            errors['base'] = 'accept_agreement'
+        self._been_here_before = True
         return self.async_show_form(
             step_id="accept",
             data_schema=vol.Schema(data_schema),
@@ -83,6 +114,9 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             except OptisparkApiClientUnitError as err:
                 LOGGER.warning(err)
                 errors["base"] = "unit"
+            except OptisparkGetEntityError as err:
+                LOGGER.error(err)
+                errors["base"] = "get_entity"
 
         # Get post code from homeassistant
         try:
@@ -144,9 +178,13 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         The heat pump power usage entity should report that it uses either W or kW
         """
-        accepted_units = ['W', 'kW']
         power_entity = get_entity(self.hass, heat_pump_power_entity_id)
-        unit = power_entity.native_unit_of_measurement
+        try:
+            unit = power_entity.native_unit_of_measurement
+        except Exception as err:
+            LOGGER.error(traceback.format_exc())
+            raise OptisparkGetEntityError(err)
+        accepted_units = ['W', 'kW']
         if unit not in accepted_units:
             raise OptisparkApiClientUnitError
 
@@ -163,12 +201,3 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             return postcode
         except Exception:
             raise OptisparkApiClientPostcodeError('Error validation postcode')
-
-    #async def _test_credentials_old(self, username: str, password: str) -> None:
-    #    """Validate credentials."""
-    #    client = OptisparkApiClient(
-    #        username=username,
-    #        password=password,
-    #        session=async_create_clientsession(self.hass),
-    #    )
-    #    await client.async_get_data()
