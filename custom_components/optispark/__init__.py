@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers import template
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import device_registry
 from homeassistant.helpers.entity_registry import RegistryEntry
@@ -136,62 +137,89 @@ def get_user_info(hass, heat_pump_entity_id):
 
     # Where can we get the integration version???  We can add that later
     return {'heat_pump_details': heat_pump_details,
-            'home_assistant_details': home_assistant_details}
+            'home_assistant_details': home_assistant_details,
+            'optispark_integration_version': optispark_integration_version(hass)}
+
+
+def optispark_integration_version(hass):
+    """Get the version of the OptiSpark plugin.
+
+    This will only work after entities have been initialised (not during config_flow)
+    """
+    device_id: str = template.device_id(hass, const.NAME)
+    device_reg: DeviceRegistry = device_registry.async_get(hass).async_get(device_id)
+    version = device_reg.model
+    return version
+
+
+class OptisparkGetHistoryError(Exception):
+    """Error getting heat pump history and user data."""
 
 
 async def get_history(hass, history_days: int, climate_entity_id, heat_pump_power_entity_id,
-                      external_temp_entity_id, user_hash):
-    """Get <history_days> worth of historical data from relevant devices."""
-    start_time = pytz.UTC.localize(datetime.utcnow() - timedelta(days=history_days))
-    end_time = pytz.UTC.localize(datetime.utcnow())
+                      external_temp_entity_id, user_hash, include_user_info):
+    """Get <history_days> worth of historical data from relevant devices.
 
-    histories = {}
-    history_targets = {
-        heat_pump_power_entity_id: {
-            'save_attributes': False},
-        external_temp_entity_id: {
-            'save_attributes': False},
-        climate_entity_id: {
-            'save_attributes': True}}
-    key_lookup = {
-        heat_pump_power_entity_id: const.DATABASE_COLUMN_SENSOR_HEAT_PUMP_POWER,
-        external_temp_entity_id: const.DATABASE_COLUMN_SENSOR_EXTERNAL_TEMPERATURE,
-        climate_entity_id: const.DATABASE_COLUMN_SENSOR_CLIMATE_ENTITY}
-    constant_attributes = {}  # Store attributes that would otherwise repeat in every time step
-    for entity_id in history_targets:
-        sensor = key_lookup[entity_id]
-        args = [
-            hass,
-            start_time,
-            end_time,
-            entity_id]
-        tmp = await get_instance(hass).async_add_executor_job(
-            state_changes_during_period,
-            *args)
-        if history_targets[entity_id]['save_attributes']:
-            histories[sensor] = {time_step.last_updated: {
-                'state': time_step.state,
-                'attributes': time_step.attributes}
-                for time_step in tmp[entity_id]}
+    include_user_info should be set to False in config_flow because the entities have not yet been
+    initialised.
+    """
+    try:
+        start_time = pytz.UTC.localize(datetime.utcnow() - timedelta(days=history_days))
+        end_time = pytz.UTC.localize(datetime.utcnow())
+
+        histories = {}
+        history_targets = {
+            heat_pump_power_entity_id: {
+                'save_attributes': False},
+            external_temp_entity_id: {
+                'save_attributes': False},
+            climate_entity_id: {
+                'save_attributes': True}}
+        key_lookup = {
+            heat_pump_power_entity_id: const.DATABASE_COLUMN_SENSOR_HEAT_PUMP_POWER,
+            external_temp_entity_id: const.DATABASE_COLUMN_SENSOR_EXTERNAL_TEMPERATURE,
+            climate_entity_id: const.DATABASE_COLUMN_SENSOR_CLIMATE_ENTITY}
+        constant_attributes = {}  # Store attributes that would otherwise repeat in every time step
+        for entity_id in history_targets:
+            sensor = key_lookup[entity_id]
+            args = [
+                hass,
+                start_time,
+                end_time,
+                entity_id]
+            tmp = await get_instance(hass).async_add_executor_job(
+                state_changes_during_period,
+                *args)
+            if history_targets[entity_id]['save_attributes']:
+                histories[sensor] = {time_step.last_updated: {
+                    'state': time_step.state,
+                    'attributes': time_step.attributes}
+                    for time_step in tmp[entity_id]}
+            else:
+                histories[sensor] = {time_step.last_updated: {
+                    'state': time_step.state,
+                    'attributes': {}}
+                    for time_step in tmp[entity_id]}
+
+
+            LOGGER.debug(f'len(histories[{sensor}]): {len(histories[sensor])}')
+
+            # Get attributes from first time_step
+            constant_attributes[sensor] = {
+                'entity_id': tmp[entity_id][0].entity_id,
+                'attributes': tmp[entity_id][0].attributes}
+
+        if include_user_info:
+            user_info = get_user_info(hass, climate_entity_id)
         else:
-            histories[sensor] = {time_step.last_updated: {
-                'state': time_step.state,
-                'attributes': {}}
-                for time_step in tmp[entity_id]}
+            user_info = {}
 
-
-        LOGGER.debug(f'len(histories[{sensor}]): {len(histories[sensor])}')
-
-        # Get attributes from first time_step
-        constant_attributes[sensor] = {
-            'entity_id': tmp[entity_id][0].entity_id,
-            'attributes': tmp[entity_id][0].attributes}
-
-    user_info = get_user_info(hass, climate_entity_id)
-
-    dynamo_data = {
-        'histories': histories,
-        'constant_attributes': constant_attributes,
-        'user_info': user_info,
-        'user_hash': user_hash}
+        dynamo_data = {
+            'histories': histories,
+            'constant_attributes': constant_attributes,
+            'user_info': user_info,
+            'user_hash': user_hash}
+    except Exception:
+        LOGGER.error(traceback.format_exc())
+        raise OptisparkGetHistoryError('Error getting history')
     return dynamo_data

@@ -19,7 +19,7 @@ from .api import (
     OptisparkApiClientCommunicationError,
     OptisparkApiClientError
 )
-from . import OptisparkGetEntityError
+from . import OptisparkGetEntityError, OptisparkGetHistoryError
 from .const import DOMAIN, LOGGER
 from . import const, get_entity, get_username
 
@@ -50,28 +50,30 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 user_hash = hashlib.sha256(user_hash.encode('utf-8')).hexdigest()
                 user_input['user_hash'] = user_hash
 
-                # Upload history
-                # Add an option to lambda to only upload history
-                # I think we have to do the longer history here
-                dynamo_data = await get_history(
-                    hass=self.hass,
-                    history_days=const.HISTORY_DAYS,
-                    climate_entity_id=user_input['climate_entity_id'],
-                    heat_pump_power_entity_id=user_input['heat_pump_power_entity_id'],
-                    external_temp_entity_id=user_input['external_temp_entity_id'],
-                    user_hash=user_hash)
-                LOGGER.debug('************ Uploading history ***********')
-                tmp_client = OptisparkApiClient(
-                    session=async_get_clientsession(self.hass))
                 try:
+                    dynamo_data = await get_history(
+                        hass=self.hass,
+                        history_days=const.HISTORY_DAYS,
+                        climate_entity_id=user_input['climate_entity_id'],
+                        heat_pump_power_entity_id=user_input['heat_pump_power_entity_id'],
+                        external_temp_entity_id=user_input['external_temp_entity_id'],
+                        user_hash=user_hash,
+                        include_user_info=False)
+                    LOGGER.debug('************ Uploading history ***********')
+                    tmp_client = OptisparkApiClient(
+                        session=async_get_clientsession(self.hass))
+
                     await tmp_client.upload_history(dynamo_data)
+                    LOGGER.debug('************ Upload complete ***********')
+
                 except OptisparkApiClientTimeoutError:
                     errors['base'] = 'optispark_timeout_error'
                 except OptisparkApiClientCommunicationError:
                     errors['base'] = 'optispark_communication_error'
                 except OptisparkApiClientError:
                     errors['base'] = 'optispark_communication_error'
-                LOGGER.debug('************ Upload complete ***********')
+                except OptisparkGetHistoryError:
+                    errors['base'] = 'optispark_history_error'
 
                 if errors == {}:
                     return self.async_create_entry(

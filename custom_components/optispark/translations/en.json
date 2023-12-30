@@ -25,9 +25,10 @@
             "connection": "Unable to connect to the server.",
             "optispark_timeout_error": "Connection timed out, try again",
             "optispark_communication_error": "Unknown communication error",
+            "optispark_history_error": "Error getting heat pump temperature history, please create an issue and post your logs: https://github.com/Big-Tree/HomeAssistant-OptiSpark/issues",
             "unknown": "Unknown error occurred.",
             "unit": "The power sensor does not use supported units: (W, kW)",
-            "get_entity": "Error accessing heat pump, please post logs: https://github.com/Big-Tree/HomeAssistant-OptiSpark/issues/20",
+            "get_entity": "Error accessing heat pump, please post your logs: https://github.com/Big-Tree/HomeAssistant-OptiSpark/issues/20",
             "accept_agreement": "Sorry, we need the data to calculate the heating profile and to improve our integration."
         }
     }

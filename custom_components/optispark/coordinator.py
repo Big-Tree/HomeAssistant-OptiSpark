@@ -238,7 +238,8 @@ class LambdaUpdateHandler:
             climate_entity_id=self.climate_entity_id,
             heat_pump_power_entity_id=self.heat_pump_power_entity_id,
             external_temp_entity_id=self.external_temp_entity_id,
-            user_hash=self.user_hash)
+            user_hash=self.user_hash,
+            include_user_info=True)
 
         self.lambda_results = await client.async_get_data(lambda_args, dynamo_data)
         time_str = self.lambda_results[const.LAMBDA_OPTIMISED_DEMAND][-1]['x']
