@@ -6,8 +6,9 @@
     "@chappers00"
   ],
   "config_flow": true,
+  "dependencies": ["recorder"],
   "documentation": "https://github.com/Big-Tree/HomeAssistant-OptiSpark",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Big-Tree/HomeAssistant-OptiSpark/issues",
-  "version": "0.0.3"
+  "version": "0.0.4"
 }
