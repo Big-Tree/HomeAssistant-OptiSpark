@@ -82,7 +82,7 @@ def get_entity(hass: HomeAssistant, entity_id: str):
     seems a bit dodgy.
     """
     try:
-        LOGGER.info(f'\n')
+        LOGGER.info('\n')
         LOGGER.info(f'entity_id: {entity_id}')
         entity_reg: RegistryEntry = entity_registry.async_get(hass).async_get(entity_id)
         LOGGER.info(f'entity_reg: {entity_reg}')
