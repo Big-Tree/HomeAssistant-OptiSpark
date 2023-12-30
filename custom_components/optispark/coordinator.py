@@ -94,6 +94,9 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         """
         entity_register: EntityRegistry = entity_registry.async_get(self.hass)
         device_id: str = template.device_id(self.hass, const.NAME)
+        if device_id is None:
+            # Id not found - this is the first time the integration has been initialised
+            return []
         entities: list[RegistryEntry] = entity_registry.async_entries_for_device(
             entity_register,
             device_id,
