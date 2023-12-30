@@ -82,6 +82,7 @@ def get_entity(hass: HomeAssistant, entity_id: str):
     seems a bit dodgy.
     """
     try:
+        LOGGER.info(f'\n')
         LOGGER.info(f'entity_id: {entity_id}')
         entity_reg: RegistryEntry = entity_registry.async_get(hass).async_get(entity_id)
         LOGGER.info(f'entity_reg: {entity_reg}')
@@ -94,7 +95,7 @@ def get_entity(hass: HomeAssistant, entity_id: str):
         LOGGER.info(f'domain: {domain}')
         #domain: str = entity_reg.platform
         entity_coordinator: DataUpdateCoordinator = hass.data[domain][entity_reg.config_entry_id]
-        LOGGER.info(f'entity_coordinator: {entity_coordinator}')
+        LOGGER.info(f'entity_coordinator: {entity_coordinator}\n')
 
         # Get the entity via the entity coordinator
         for update_callback, _ in entity_coordinator._listeners.values():
