@@ -103,10 +103,12 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             include_disabled_entities=True)
         if include_switch is False:
             # Remove the switch from the list so it doesn't get disabled
+            idx_store = None
             for idx, entity in enumerate(entities):
                 if entity.entity_id == 'switch.' + const.SWITCH_KEY:
                     idx_store = idx
-            del entities[idx_store]
+            if idx_store is not None:
+                del entities[idx_store]
         return entities
 
     def enable_disable_entities(self, entities: list[RegistryEntry], enable: bool):
