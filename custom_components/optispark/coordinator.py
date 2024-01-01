@@ -151,8 +151,20 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
 
     @property
     def heat_pump_power_usage(self):
-        """Power usage of the heat pump."""
-        return get_entity(self.hass, self._heat_pump_power_entity_id).native_value
+        """Power usage of the heat pump.
+
+        Return value in kW
+        """
+        entity = get_entity(self.hass, self._heat_pump_power_entity_id)
+        native_value = entity.native_value
+        match entity.unit_of_measurement:
+            case 'W':
+                return native_value/1000
+            case 'kW':
+                return native_value
+            case _:
+                LOGGER.error(f'Heat pump does not use supported unit({entity.unit_of_measurement})')
+                raise TypeError(f'Heat pump does not use supported unit({entity.unit_of_measurement})')
 
     @property
     def external_temp(self):
