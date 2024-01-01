@@ -88,7 +88,8 @@ async def async_setup_entry(hass, entry, async_add_devices):
                 name="Heat pump power usage",
                 icon="mdi:lightning-bolt"),
             lambda_measurement=None,
-            native_unit_of_measurement='W',
+            native_unit_of_measurement='kW',
+            suggested_display_precision=2,
             coordinator_parameter='heat_pump_power_usage',
             device_class=SensorDeviceClass.POWER,
         ),
@@ -101,6 +102,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
             lambda_measurement=None,
             native_unit_of_measurement='°C',
             coordinator_parameter='external_temp',
+            suggested_display_precision=1,
             device_class=SensorDeviceClass.TEMPERATURE,
         ),
     ])

@@ -5,7 +5,7 @@ LOGGER: Logger = getLogger(__package__)
 
 NAME = "Optispark"
 DOMAIN = "optispark"
-VERSION = "0.0.6"
+VERSION = "0.0.7"
 ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
 
 LAMBDA_TEMP = 'temps'
