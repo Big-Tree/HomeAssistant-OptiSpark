@@ -9,7 +9,6 @@ from geopy.adapters import AioHTTPAdapter
 from geopy.geocoders import Nominatim
 import hashlib
 import traceback
-from . import get_history
 
 from .api import (
     OptisparkApiClientPostcodeError,
@@ -19,9 +18,10 @@ from .api import (
     OptisparkApiClientCommunicationError,
     OptisparkApiClientError
 )
-from . import OptisparkGetEntityError, OptisparkGetHistoryError
+from . import OptisparkGetEntityError
 from .const import DOMAIN, LOGGER
 from . import const, get_entity, get_username
+from .history import get_history, OptisparkGetHistoryError
 
 
 class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):

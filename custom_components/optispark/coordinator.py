@@ -20,7 +20,7 @@ from .api import (
 )
 from . import const
 from . import get_entity
-from . import get_history
+from .history import get_history
 from .const import LOGGER
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.helpers import entity_registry
