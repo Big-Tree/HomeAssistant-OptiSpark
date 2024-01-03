@@ -6,6 +6,7 @@ import pytz
 import traceback
 
 from homeassistant.core import HomeAssistant
+import homeassistant.const
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -71,6 +72,50 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             self._external_temp_entity_id,
             self._user_hash)
 
+    def convert_sensor_from_farenheit(self, entity, temp):
+        """Ensure that the sensor returns values in Celcius
+
+        Only works with sensor entities
+        If the sensor uses Farenheit then we'll need to convert Farenheit to Celcius
+        """
+        sensor_unit = entity.native_unit_of_measurement
+        if sensor_unit == homeassistant.const.TEMP_CELSIUS:
+            return temp
+        elif sensor_unit == homeassistant.const.TEMP_FAHRENHEIT:
+            # Convert temperature from Celcius to Farenheit
+            return (temp-32) * 5/9
+        else:
+            raise ValueError(f'Heat pump uses unkown units ({heat_pump_unit})')
+
+    def convert_climate_from_farenheit(self, entity, temp):
+        """Ensure that the heat pump returns values in Celcius
+
+        Only works with climate entity
+        If the heat_pump uses Farenheit then we'll need to convert Farenheit to Celcius
+        """
+        heat_pump_unit = entity.temperature_unit
+        if heat_pump_unit == homeassistant.const.TEMP_CELSIUS:
+            return temp
+        elif heat_pump_unit == homeassistant.const.TEMP_FAHRENHEIT:
+            # Convert temperature from Celcius to Farenheit
+            return (temp-32) * 5/9
+        else:
+            raise ValueError(f'Heat pump uses unkown units ({heat_pump_unit})')
+
+    def convert_climate_from_celcius(self, entity, temp):
+        """Ensure that the heat pump is given a temperature in the correct units
+
+        Only works with climate entities.
+        If the heat_pump uses Farenheit then we'll need to convert Celcius to Farenheit"""
+        heat_pump_unit = entity.temperature_unit
+        if heat_pump_unit == homeassistant.const.TEMP_CELSIUS:
+            return temp
+        elif heat_pump_unit == homeassistant.const.TEMP_FAHRENHEIT:
+            # Convert temperature from Celcius to Farenheit
+            return temp*9/5 + 32
+        else:
+            raise ValueError(f'Heat pump uses unkown units ({heat_pump_unit})')
+
     async def update_heat_pump_temperature(self, data):
         """Set the temperature of the heat pump using the value from lambda."""
         temp: float = data[const.LAMBDA_TEMP]
@@ -79,10 +124,11 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             if climate_entity.hvac_mode == HVACMode.HEAT_COOL:
                 await climate_entity.async_set_temperature(
-                    target_temp_low=temp,
+                    target_temp_low=self.convert_climate_from_celcius(climate_entity, temp),
                     target_temp_high=climate_entity.target_temperature_high)
             else:
-                await climate_entity.async_set_temperature(temperature=temp)
+                await climate_entity.async_set_temperature(
+                    temperature=self.convert_climate_from_celcius(climate_entity, temp))
         except Exception as err:
             LOGGER.error(traceback.format_exc())
             raise OptisparkSetTemperatureError(err)
@@ -146,7 +192,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
     def house_temperature(self):
         """Power usage of the heat pump."""
         entity = get_entity(self.hass, self._climate_entity_id)
-        out = entity.current_temperature
+        out = self.convert_climate_from_farenheit(entity, entity.current_temperature)
         return out
 
     @property
@@ -172,7 +218,8 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         if self._external_temp_entity_id is None:
             return None
         else:
-            return get_entity(self.hass, self._external_temp_entity_id).native_value
+            entity = get_entity(self.hass, self._external_temp_entity_id)
+            return self.convert_sensor_from_farenheit(entity, entity.native_value)
 
     @property
     def lambda_args(self):
