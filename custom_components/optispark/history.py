@@ -20,7 +20,6 @@ import pytz
 import json
 from .const import LOGGER
 from . import const
-from . import get_entity
 
 
 class OptisparkGetHistoryError(Exception):
@@ -67,7 +66,7 @@ def get_user_info(hass, heat_pump_entity_id):
 def climate_history(hass, climate_entity_id, state_changes):
     """Climate history.
 
-    Home assistant logs the temperature states in whatever unit is set by the user (not the heat 
+    Home assistant logs the temperature states in whatever unit is set by the user (not the heat
     pump entity).  We only need to convert the temperature to °C if the user is using hh in °F mode.
 
     If the user toggles the hh temperature units, the past logs will be messed up.  The units will be

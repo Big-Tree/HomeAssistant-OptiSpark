@@ -73,7 +73,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             self._user_hash)
 
     def convert_sensor_from_farenheit(self, entity, temp):
-        """Ensure that the sensor returns values in Celcius
+        """Ensure that the sensor returns values in Celcius.
 
         Only works with sensor entities
         If the sensor uses Farenheit then we'll need to convert Farenheit to Celcius
@@ -85,10 +85,10 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             # Convert temperature from Celcius to Farenheit
             return (temp-32) * 5/9
         else:
-            raise ValueError(f'Heat pump uses unkown units ({heat_pump_unit})')
+            raise ValueError(f'Heat pump uses unkown units ({sensor_unit})')
 
     def convert_climate_from_farenheit(self, entity, temp):
-        """Ensure that the heat pump returns values in Celcius
+        """Ensure that the heat pump returns values in Celcius.
 
         Only works with climate entity
         If the heat_pump uses Farenheit then we'll need to convert Farenheit to Celcius
@@ -103,10 +103,11 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             raise ValueError(f'Heat pump uses unkown units ({heat_pump_unit})')
 
     def convert_climate_from_celcius(self, entity, temp):
-        """Ensure that the heat pump is given a temperature in the correct units
+        """Ensure that the heat pump is given a temperature in the correct units.
 
         Only works with climate entities.
-        If the heat_pump uses Farenheit then we'll need to convert Celcius to Farenheit"""
+        If the heat_pump uses Farenheit then we'll need to convert Celcius to Farenheit
+        """
         heat_pump_unit = entity.temperature_unit
         if heat_pump_unit == homeassistant.const.TEMP_CELSIUS:
             return temp
