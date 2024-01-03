@@ -9,6 +9,7 @@ All values in W are converted to kW
 
 from homeassistant.components.recorder.history import state_changes_during_period
 from homeassistant.components.recorder.util import get_instance
+from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity_registry import RegistryEntry
 from homeassistant.helpers.device_registry import DeviceRegistry
 from homeassistant.helpers import entity_registry
@@ -63,14 +64,22 @@ def get_user_info(hass, heat_pump_entity_id):
             'optispark_integration_version': optispark_integration_version(hass)}
 
 
-def climate_history(hass, climate_entity_id, column_name, state_changes):
-    """Climate history."""
+def climate_history(hass, climate_entity_id, state_changes):
+    """Climate history.
+
+    Home assistant logs the temperature states in whatever unit is set by the user (not the heat 
+    pump entity).  We only need to convert the temperature to °C if the user is using hh in °F mode.
+
+    If the user toggles the hh temperature units, the past logs will be messed up.  The units will be
+    incorrect, they will have been stored as the old unit but now read as the new unit.  Lets just hope
+    people don't regularly swap their temperature units.
+    """
     history = {}
     constant_attributes = {}  # Store attributes that would otherwise repeat in every time step
-    heat_pump_unit = get_entity(hass, climate_entity_id).temperature_unit
+    hh_temp_units = hass.config.units.temperature_unit
     attributes_to_convert_to_celcius = ['current_temperature', 'target_temp_high', 'target_temp_low', 'temperature']
     for time_step in state_changes:
-        if heat_pump_unit == '°F':
+        if hh_temp_units == UnitOfTemperature.FAHRENHEIT:
             for key in attributes_to_convert_to_celcius:
                 if key in time_step.attributes:
                     try:
@@ -78,7 +87,7 @@ def climate_history(hass, climate_entity_id, column_name, state_changes):
                     except Exception:
                         LOGGER.warn(f'Could not convert time_step.attributes[{key}] ({time_step.attributes[key]}) of type({type(time_step.attributes[key])}) to float')
                         continue
-        elif heat_pump_unit == '°C':
+        elif hh_temp_units == UnitOfTemperature.CELSIUS:
             # Already in °C but still cast to float
             for key in attributes_to_convert_to_celcius:
                 if key in time_step.attributes:
@@ -88,22 +97,28 @@ def climate_history(hass, climate_entity_id, column_name, state_changes):
                         LOGGER.warn(f'Could not convert time_step.attributes[{key}] ({time_step.attributes[key]}) of type({type(time_step.attributes[key])}) to float')
                         continue
         else:
-            LOGGER.error(f'Heat pump uses unkown units ({heat_pump_unit})')
-            raise ValueError(f'Heat pump uses unkown units ({heat_pump_unit})')
+            LOGGER.error(f'Heat pump uses unkown units ({hh_temp_units})')
+            raise ValueError(f'Heat pump uses unkown units ({hh_temp_units})')
 
         history[time_step.last_updated] = {
             'state': time_step.state,
             'attributes': time_step.attributes}
 
     # Get attributes from most recent time_step
-    constant_attributes[column_name] = {
+    constant_attributes = {
         'entity_id': state_changes[-1].entity_id,
         'attributes': state_changes[-1].attributes}
 
     return history, constant_attributes
 
-def external_temp_history(_hass, _entity_id, column_name, state_changes):
-    """External temperature history."""
+def external_temp_history(_hass, _entity_id, state_changes):
+    """External temperature history.
+
+    The sensor will be displayed in whatever unit the sensor is set to. This is odd.  It ignores the
+    hh setting and is different to the climate_entity.  I imagine this could change in the future.
+
+    The unit is stored with each time step log, so we are fully able convert the history to °C.
+    """
     history = {}
     constant_attributes = {}  # Store attributes that would otherwise repeat in every time step
     for time_step in state_changes:
@@ -135,15 +150,19 @@ def external_temp_history(_hass, _entity_id, column_name, state_changes):
             'attributes': {}}
 
     # Get attributes from most recent time_step
-    constant_attributes[column_name] = {
+    constant_attributes = {
         'entity_id': state_changes[-1].entity_id,
         'attributes': state_changes[-1].attributes}
 
     return history, constant_attributes
 
 
-def power_history(_hass, _entity_id, column_name, state_changes):
-    """Heat pump power use history."""
+def power_history(_hass, _entity_id, state_changes):
+    """Heat pump power use history.
+
+    Home assistant includes units in each power usage log.  There are no issues converting
+    each time step to kW.  The unit recorded is that used by the sensor.
+    """
     history = {}
     constant_attributes = {}  # Store attributes that would otherwise repeat in every time step
     for time_step in state_changes:
@@ -175,7 +194,7 @@ def power_history(_hass, _entity_id, column_name, state_changes):
             'attributes': {}}
 
     # Get attributes from most recent time_step
-    constant_attributes[column_name] = {
+    constant_attributes = {
         'entity_id': state_changes[-1].entity_id,
         'attributes': state_changes[-1].attributes}
 
@@ -223,7 +242,6 @@ async def get_history(hass, history_days: int, climate_entity_id, heat_pump_powe
         histories[column_name], constant_attributes[column_name] = function_lookup[entity_id](
             hass,
             entity_id,
-            column_name,
             state_changes)
 
 
