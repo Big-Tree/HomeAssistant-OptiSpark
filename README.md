@@ -1,49 +1,61 @@
-# OptiSpark
+### 🚀 Testers wanted:
+We are looking for people to test the integration and find out how much money you save.  Please email me at william.murphy@optispark.ai or raise github issues.  Thanks!
 
-# Notice
+# ![logo](https://github.com/Big-Tree/HomeAssistant-OptiSpark/blob/main/logo.png)
 
-The component and platforms in this repository are not meant to be used by a
-user, but as a "blueprint" that custom component developers can build
-upon, to make more awesome stuff.
+Welcome to OPTISPARK, where we aim to enhance your heat pump's performance, enabling it to take advantage of variable electricity prices. By intelligently managing your heat pump, OPTISPARK can help you reduce electricity costs by approximately 20%.
 
-HAVE FUN! 😎
 
-## Why?
 
-This is simple, by having custom_components look (README + structure) the same
-it is easier for developers to help each other and for users to start using them.
+## Key benefits:
+- **Cost Reduction:** Reduce your electricity cost by roughly 20%
+- **Temperature Maintenance:** Ensure your home's temperature remains in a comfortable range
+- **Additional Savings:** Save more by increasing the temperature range, automatically lowering the house temperature during peak electricity prices
 
-If you are a developer and you want to add things to this "blueprint" that you think more
-developers will have use for, please open a PR to add it :)
+Find out how much you could save for your area: [OPTISPARK.ai/demo](https://optispark.ai/demo/)
 
-## What?
+# How does it work?
+If you are on Octopus's agile electricity tariff, prices vary throughout the day.  Our algorithm adapts to your home's thermal profile and adjusts the heat pump to use more electricity during cheaper periods, and less during expensive periods.
 
-This repository contains multiple files, here is a overview:
+To save more money you can increase the temperature range, this allows the home to drop in temperature during an expensive period.
 
-File | Purpose | Documentation
--- | -- | --
-`.devcontainer.json` | Used for development/testing with Visual Studio Code. | [Documentation](https://code.visualstudio.com/docs/remote/containers)
-`.github/ISSUE_TEMPLATE/*.yml` | Templates for the issue tracker | [Documentation](https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository)
-`.vscode/tasks.json` | Tasks for the devcontainer. | [Documentation](https://code.visualstudio.com/docs/editor/tasks)
-`custom_components/integration_blueprint/*` | Integration files, this is where everything happens. | [Documentation](https://developers.home-assistant.io/docs/creating_component_index)
-`CONTRIBUTING.md` | Guidelines on how to contribute. | [Documentation](https://help.github.com/en/github/building-a-strong-community/setting-guidelines-for-repository-contributors)
-`LICENSE` | The license file for the project. | [Documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/licensing-a-repository)
-`README.md` | The file you are reading now, should contain info about the integration, installation and configuration instructions. | [Documentation](https://help.github.com/en/github/writing-on-github/basic-writing-and-formatting-syntax)
-`requirements.txt` | Python packages used for development/lint/testing this integration. | [Documentation](https://pip.pypa.io/en/stable/user_guide/#requirements-files)
+# Install
+Install HACS if not already installed: [hacs.xyz/docs/setup/download/](https://hacs.xyz/docs/setup/download/)
+## HACS
+### Add the custom integration to HACS
 
-## How?
+1. HACS -> Integrations -> ⚙️Options -> Custom repositories
+2. Repository: `https://github.com/Big-Tree/HomeAssistant-OPTISPARK`
+3. Category: `Integration`
 
-1. Create a new repository in GitHub, using this repository as a template by clicking the "Use this template" button in the GitHub UI.
-1. Open your new repository in Visual Studio Code devcontainer (Preferably with the "`Dev Containers: Clone Repository in Named Container Volume...`" option).
-1. Rename all instances of the `integration_blueprint` to `custom_components/<your_integration_domain>` (e.g. `custom_components/awesome_integration`).
-1. Rename all instances of the `Integration Blueprint` to `<Your Integration Name>` (e.g. `Awesome Integration`).
-1. Run the `scripts/develop` to start HA and test out your new integration.
+### Download Integration
 
-## Next steps
+4. HACS -> 🔍OPTISPARK -> DOWNLOAD
+5. If prompted, restart home assistant
 
-These are some next steps you may want to look into:
-- Add tests to your integration, [`pytest-homeassistant-custom-component`](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) can help you get started.
-- Add brand images (logo/icon) to https://github.com/home-assistant/brands.
-- Create your first release.
-- Share your integration on the [Home Assistant Forum](https://community.home-assistant.io/).
-- Submit your integration to the [HACS](https://hacs.xyz/docs/publish/start).
+### Configure Integration
+
+6. Settings -> Devices & Services -> + ADD INTEGRATION -> 🔍OPTISPARK
+7. Read Configuration section of this readme
+
+## Configuration
+To optimise your heat pump we need a few details:
+
+- **Username:**  We create a hash of your username to anonymise your data
+- **Postcode:** This is used to get the electricity prices for your area and weather forecasts to calculate the COP of the heat pump
+- **Heat pump:** The heat pump to be optimised
+- **Power usage of heat pump:** To calculate how much money is being saved
+- **(Optional) External house temperature:** - Aids our optimisation algorithm
+
+OPTISPARK is now optimising your heat pump!
+
+# Requirements
+
+- Your heat pump needs to be already setup within Home Assistant
+- (Optional) Be on the Octopus Agile electricity tariff.  This is not a requirement for testing the integration, you just won't be saving as much money.  Let us know what kind of tariff you're on and we'll look into supporting it!
+
+# Uninstalling
+
+Simply delete the device and your heat pump will go back to normal operation\
+Settings -> Devices & Services -> OPTISPARK -> ⚙️Options -> Delete
+
