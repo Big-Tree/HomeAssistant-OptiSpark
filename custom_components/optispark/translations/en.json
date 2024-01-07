@@ -4,8 +4,6 @@
             "init": {
                 "description": "Information for the optimisation algorithm:",
                 "data": {
-                    "country": "Country",
-                    "tariff": "Electricity tariff",
                     "username": "Username",
                     "postcode": "Postcode",
                     "climate_entity_id": "Heat pump",
