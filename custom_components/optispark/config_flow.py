@@ -97,6 +97,73 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_init(self, user_input: dict | None = None) -> config_entries.FlowResult:
+        """Check that they are in the UK and Octopus Agile"""
+        errors = {}
+        if user_input is not None:
+            try:
+                postcode = await self._test_credentials(
+                    postcode=user_input['postcode'],
+                    heat_pump_power_entity_id=user_input['heat_pump_power_entity_id'])
+                user_input['postcode'] = postcode  # Fix postcode formating
+                if 'external_temp_entity_id' not in user_input:
+                    user_input['external_temp_entity_id'] = None
+
+                self.user_input_init = user_input
+                return await self.async_step_accept(user_input)
+            except OptisparkApiClientPostcodeError as err:
+                LOGGER.warning(err)
+                errors["base"] = "postcode"
+            except OptisparkApiClientUnitError as err:
+                LOGGER.warning(err)
+                errors["base"] = "unit"
+            except OptisparkGetEntityError as err:
+                LOGGER.error(err)
+                errors["base"] = "get_entity"
+
+        # Get post code from homeassistant
+        try:
+            async with Nominatim(
+                #user_agent="specify_your_app_name_here",
+                user_agent=self.flow_id,
+                adapter_factory=AioHTTPAdapter,
+            ) as geolocator:
+                location = await geolocator.reverse((
+                    self.hass.config.latitude,
+                    self.hass.config.longitude))
+                postcode = location.raw['address']['postcode']
+            if postcode == '' or postcode is None:
+                raise OptisparkApiClientPostcodeError()
+        except Exception as err:
+            LOGGER.warning(err)
+            postcode = ''
+            errors["base"] = "postcode_homeassistant"
+
+        data_schema = {
+            vol.Required('username', default=get_username(self.hass)): str,
+            #vol.Required('username'): str,
+        }
+
+        data_schema = {}
+        data_schema[vol.Required('country', default=self.hass.config.country)] = selector({
+            'country': {
+            }
+        })
+        data_schema[vol.Optional('tariff')] = selector({
+            "select": {
+                "options": ['Octopus Agile', 'Other'],
+                "multiple": False}
+        })
+
+
+
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(data_schema),
+            errors=errors,
+        )
+
+    async def async_step_init_old(self, user_input: dict | None = None) -> config_entries.FlowResult:
         """Handle a flow initialized by the user."""
         errors = {}
         if user_input is not None:
@@ -142,6 +209,11 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required('username', default=get_username(self.hass)): str,
             #vol.Required('username'): str,
         }
+
+        data_schema[vol.Required('country', default=self.hass.config.country)] = selector({
+            'country': {
+            }
+        })
 
         data_schema[vol.Required('postcode', default=postcode)] = str
 
