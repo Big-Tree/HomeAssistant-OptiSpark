@@ -53,7 +53,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             name=const.DOMAIN,
             update_interval=timedelta(seconds=10),
         )
-        self._postcode = postcode
+        self._postcode = postcode if postcode is not None else 'AB11 6LU'
         self._user_hash = user_hash
         self._climate_entity_id = climate_entity_id
         self._heat_pump_power_entity_id = heat_pump_power_entity_id

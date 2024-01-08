@@ -1,9 +1,18 @@
 {
     "config": {
         "step": {
-            "init": {
+            "tariff": {
+                "description": "Electricity tariff details",
+                "data": {
+                    "country": "Country",
+                    "tariff": "Electricity tariff"
+                }
+            },
+            "heat_pump_details": {
                 "description": "Information for the optimisation algorithm:",
                 "data": {
+                    "country": "Country",
+                    "tariff": "Electricity tariff",
                     "username": "Username",
                     "postcode": "Postcode",
                     "climate_entity_id": "Heat pump",
@@ -12,7 +21,7 @@
                 }
             },
             "accept":{
-                "description": "Help us develop the integration!  Share your anonymised data with us:\n  - Heat pump power usage\n  - Temperature data\n - Postcode (for weather and electricity price data)",
+                "description": "The following information is needed to calculate the optimised heat pump profile:\n  - Heat pump power usage\n  - Temperature data\n - Postcode (for weather and electricity price data)",
                 "data": {
                     "accept_agreement": ""
                 }

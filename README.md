@@ -41,8 +41,9 @@ Install HACS if not already installed: [hacs.xyz/docs/setup/download/](https://h
 ## Configuration
 To optimise your heat pump we need a few details:
 
-- **Username:**  We create a hash of your username to anonymise your data
+- **Electricity tariff:** We use Octopus's API to get prices for the Agile tariff (wider tariff support coming soon!)
 - **Postcode:** This is used to get the electricity prices for your area and weather forecasts to calculate the COP of the heat pump
+- **Country:** Currently weather forecasts only work in the UK (other countries coming soon!)
 - **Heat pump:** The heat pump to be optimised
 - **Power usage of heat pump:** To calculate how much money is being saved
 - **(Optional) External house temperature:** - Aids our optimisation algorithm
