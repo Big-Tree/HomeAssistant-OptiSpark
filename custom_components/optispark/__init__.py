@@ -9,15 +9,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers import entity_registry
-from homeassistant.helpers import device_registry
-from homeassistant.helpers.entity_registry import RegistryEntry
-from homeassistant.helpers.device_registry import DeviceRegistry
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .api import OptisparkApiClient
 from .const import DOMAIN
-from .const import LOGGER
-import traceback
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -68,39 +61,29 @@ class OptisparkGetEntityError(Exception):
     """An error occured when trying to get the entity using get_entity."""
 
 
-def get_entity(hass: HomeAssistant, entity_id: str):
-    """Get the entity associated with entity_id.  It could be owned by another integration.
+def get_entity(hass, entity_id):
+    """Get entity instance from entity_id.
 
-    Accessing entities of other integrations does not seem to be supported.  The method we use
-    seems a bit dodgy.
+    All integrations have their data stored in hass.data[domain]
+    HA integrations such as climate, switch, binary sensor have get_entity() methods that fetch
+    any entities that belong to that domain, or platforms that have implemented that domain.  This
+    includes 3rd party integrations that have implemented HA integrations (as a platform).
+
+    Scan for entity_id with all integrations that implement get_method(). We assume that only one
+    entity instance will be found.
     """
-    try:
-        LOGGER.info('\n')
-        LOGGER.info(f'entity_id: {entity_id}')
-        entity_reg: RegistryEntry = entity_registry.async_get(hass).async_get(entity_id)
-        LOGGER.info(f'entity_reg: {entity_reg}')
-        # Lets get the domain name via the device id
-        device_id = entity_reg.device_id
-        LOGGER.info(f'device_id: {device_id}')
-        device_reg: DeviceRegistry = device_registry.async_get(hass).async_get(device_id)
-        LOGGER.info(f'device_reg: {device_reg}')
-        domain: str = list(device_reg.identifiers)[0][0]
-        LOGGER.info(f'domain: {domain}')
-        #domain: str = entity_reg.platform
-        entity_coordinator: DataUpdateCoordinator = hass.data[domain][entity_reg.config_entry_id]
-        LOGGER.info(f'entity_coordinator: {entity_coordinator}\n')
 
-        # Get the entity via the entity coordinator
-        for update_callback, _ in entity_coordinator._listeners.values():
-            if update_callback.__self__.unique_id == entity_reg.unique_id:
-                entity = update_callback.__self__
-                if entity is None:
-                    raise OptisparkGetEntityError(f'Entity({entity_id}) not yet initialised')
-                return entity
-    except Exception as err:
-        LOGGER.error(traceback.format_exc())
-        LOGGER.error(err)
-        raise OptisparkGetEntityError(err)
+    entities_found = []
+    successful_domains = []
+    for domain in hass.data:
+        if hasattr(hass.data[domain], 'get_entity'):
+            entity = hass.data[domain].get_entity(entity_id)
+            if entity is not None:
+                entities_found.append(entity)
+                successful_domains.append(domain)
+    if len(entities_found) != 1:
+        raise OptisparkGetEntityError(f'({len(entities_found)}) entities found instead of 1')
+    return entities_found[0]
 
 
 def get_username(hass):
