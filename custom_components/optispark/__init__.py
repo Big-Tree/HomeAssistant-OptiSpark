@@ -10,7 +10,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import OptisparkApiClient
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -82,6 +82,10 @@ def get_entity(hass, entity_id):
                 entities_found.append(entity)
                 successful_domains.append(domain)
     if len(entities_found) != 1:
+        LOGGER.error(f'({len(entities_found)}) entities found instead of 1')
+        LOGGER.error(f'successful_domains:\n  {successful_domains}')
+        LOGGER.error(f'entities_found:\n  {entities_found}')
+        LOGGER.error(f'hass.data.keys():\n  {hass.data.keys()}')
         raise OptisparkGetEntityError(f'({len(entities_found)}) entities found instead of 1')
     return entities_found[0]
 
