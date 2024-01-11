@@ -43,7 +43,8 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         heat_pump_power_entity_id: str,
         external_temp_entity_id: str,
         user_hash: str,
-        postcode: str
+        postcode: str,
+        tariff: str
     ) -> None:
         """Initialize."""
         self.client = client
@@ -54,6 +55,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=10),
         )
         self._postcode = postcode if postcode is not None else 'AB11 6LU'
+        self._tariff = tariff
         self._user_hash = user_hash
         self._climate_entity_id = climate_entity_id
         self._heat_pump_power_entity_id = heat_pump_power_entity_id
@@ -66,11 +68,13 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             const.LAMBDA_TEMP_RANGE: 3.0,
             const.LAMBDA_POSTCODE: self.postcode}
         self._lambda_update_handler = LambdaUpdateHandler(
-            self.hass,
-            self._climate_entity_id,
-            self._heat_pump_power_entity_id,
-            self._external_temp_entity_id,
-            self._user_hash)
+            hass=self.hass,
+            climate_entity_id=self._climate_entity_id,
+            heat_pump_power_entity_id=self._heat_pump_power_entity_id,
+            external_temp_entity_id=self._external_temp_entity_id,
+            user_hash=self._user_hash,
+            postcode=self._postcode,
+            tariff=self._tariff)
 
     def convert_sensor_from_farenheit(self, entity, temp):
         """Ensure that the sensor returns values in Celcius.
@@ -285,13 +289,15 @@ class LambdaUpdateHandler:
     """
 
     def __init__(self, hass, climate_entity_id, heat_pump_power_entity_id, external_temp_entity_id,
-                 user_hash):
+                 user_hash, postcode, tariff):
         """Init."""
         self.hass = hass
         self.climate_entity_id = climate_entity_id
         self.heat_pump_power_entity_id = heat_pump_power_entity_id
         self.external_temp_entity_id = external_temp_entity_id
         self.user_hash = user_hash
+        self.postcode = postcode
+        self.tariff = tariff
         self.london_tz = pytz.timezone('Europe/London')
         self.expire_time = datetime(1, 1, 1, 0, 0, 0, tzinfo=self.london_tz)  # Already expired
         self.manual_update = False
@@ -318,6 +324,8 @@ class LambdaUpdateHandler:
             heat_pump_power_entity_id=self.heat_pump_power_entity_id,
             external_temp_entity_id=self.external_temp_entity_id,
             user_hash=self.user_hash,
+            postcode=self.postcode,
+            tariff=self.tariff,
             include_user_info=True)
 
         self.lambda_results = await client.async_get_data(lambda_args, dynamo_data)

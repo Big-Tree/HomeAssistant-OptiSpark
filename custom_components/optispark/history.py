@@ -42,7 +42,7 @@ def optispark_integration_version(hass):
     return version
 
 
-def get_user_info(hass, heat_pump_entity_id):
+def get_user_info(hass, heat_pump_entity_id, postcode, tariff):
     """Get user info."""
     heat_pump_entity_reg: RegistryEntry = entity_registry.async_get(hass).async_get(heat_pump_entity_id)
     heat_pump_device_id = heat_pump_entity_reg.device_id
@@ -60,7 +60,9 @@ def get_user_info(hass, heat_pump_entity_id):
     # Where can we get the integration version???  We can add that later
     return {'heat_pump_details': heat_pump_details,
             'home_assistant_details': home_assistant_details,
-            'optispark_integration_version': optispark_integration_version(hass)}
+            'optispark_integration_version': optispark_integration_version(hass),
+            'postcode': postcode,
+            'tariff': tariff}
 
 
 def climate_history(hass, climate_entity_id, state_changes):
@@ -216,7 +218,7 @@ async def get_state_changes(hass, entity_id, history_days):
 
 
 async def get_history(hass, history_days: int, climate_entity_id, heat_pump_power_entity_id,
-                      external_temp_entity_id, user_hash, include_user_info):
+                      external_temp_entity_id, user_hash, postcode, tariff, include_user_info):
     """Get <history_days> worth of historical data from relevant devices.
 
     include_user_info should be set to False in config_flow because the entities have not yet been
@@ -248,7 +250,7 @@ async def get_history(hass, history_days: int, climate_entity_id, heat_pump_powe
 
 
     if include_user_info:
-        user_info = get_user_info(hass, climate_entity_id)
+        user_info = get_user_info(hass, climate_entity_id, postcode, tariff)
     else:
         user_info = {}
 

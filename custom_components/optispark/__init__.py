@@ -34,6 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         external_temp_entity_id=entry.data['external_temp_entity_id'],
         user_hash=entry.data['user_hash'],
         postcode=entry.data['postcode'],
+        tariff=entry.data['tariff']
     )
     # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
     await coordinator.async_config_entry_first_refresh()

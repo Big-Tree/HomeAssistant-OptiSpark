@@ -163,6 +163,8 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                         heat_pump_power_entity_id=user_input['heat_pump_power_entity_id'],
                         external_temp_entity_id=user_input['external_temp_entity_id'],
                         user_hash=user_hash,
+                        postcode=user_input['postcode'],
+                        tariff=user_input['tariff'],
                         include_user_info=False)
                     LOGGER.debug('************ Uploading history ***********')
                     tmp_client = OptisparkApiClient(
