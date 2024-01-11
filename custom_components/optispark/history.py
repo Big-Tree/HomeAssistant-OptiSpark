@@ -236,6 +236,9 @@ async def get_history(hass, history_days: int, climate_entity_id, heat_pump_powe
         heat_pump_power_entity_id: power_history}
 
     for entity_id in function_lookup:
+        if entity_id is None:
+            LOGGER.debug(f'({column_name_lookup[entity_id]}) entity missing, skipping...')
+            continue
         column_name = column_name_lookup[entity_id]
         state_changes = await get_state_changes(hass, entity_id, history_days)
         histories[column_name], constant_attributes[column_name] = function_lookup[entity_id](
