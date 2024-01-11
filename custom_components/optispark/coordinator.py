@@ -123,6 +123,9 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         climate_entity = get_entity(self.hass, self._climate_entity_id)
 
         try:
+            if self.heat_pump_target_temperature == temp:
+                return
+            LOGGER.debug('Change in target temperature!')
             if climate_entity.hvac_mode == HVACMode.HEAT_COOL:
                 await climate_entity.async_set_temperature(
                     target_temp_low=self.convert_climate_from_celcius(climate_entity, temp),
@@ -190,8 +193,22 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         return self._postcode
 
     @property
+    def heat_pump_target_temperature(self):
+        """The current target temperature that the heat pump is set to.
+
+        Assumes that the heat pump is being used for heating.
+        """
+        climate_entity = get_entity(self.hass, self._climate_entity_id)
+        match climate_entity.hvac_mode:
+            case HVACMode.HEAT_COOL:
+                temperature = climate_entity.target_temperature_low
+            case _:
+                temperature = climate_entity.target_temperature
+        return temperature
+
+    @property
     def house_temperature(self):
-        """Power usage of the heat pump."""
+        """Internal temperature of the heat pump."""
         entity = get_entity(self.hass, self._climate_entity_id)
         out = self.convert_climate_from_farenheit(entity, entity.current_temperature)
         return out
