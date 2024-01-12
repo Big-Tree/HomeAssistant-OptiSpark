@@ -301,6 +301,7 @@ class LambdaUpdateHandler:
         self.london_tz = pytz.timezone('Europe/London')
         self.expire_time = datetime(1, 1, 1, 0, 0, 0, tzinfo=self.london_tz)  # Already expired
         self.manual_update = False
+        self.oldest_dates = None
 
     async def __call__(self, client: OptisparkApiClient, lambda_args):
         """Return lambda data for the current time."""
@@ -328,7 +329,7 @@ class LambdaUpdateHandler:
             tariff=self.tariff,
             include_user_info=True)
 
-        self.lambda_results = await client.async_get_data(lambda_args, dynamo_data)
+        self.lambda_results, self.oldest_dates = await client.async_get_data(lambda_args, dynamo_data)
         time_str = self.lambda_results[const.LAMBDA_OPTIMISED_DEMAND][-1]['x']
         self.expire_time = datetime.strptime(time_str, '%Y-%m-%d %H:%M')
         self.expire_time = self.expire_time.replace(tzinfo=self.london_tz)

@@ -109,7 +109,7 @@ class OptisparkApiClient:
 
         payload = lambda_args
         payload['dynamo_data'] = dynamo_data
-        results, errors = await self._api_wrapper(
+        results, errors, extra = await self._api_wrapper(
             method="post",
             url=lambda_url,
             data=payload,
@@ -124,7 +124,7 @@ class OptisparkApiClient:
             results['projected_percent_savings'] = 100
         else:
             results['projected_percent_savings'] = results['base_cost']/results['optimised_cost']*100 - 100
-        return results
+        return results, extra['oldest_dates']
 
     async def _api_wrapper(
         self,
