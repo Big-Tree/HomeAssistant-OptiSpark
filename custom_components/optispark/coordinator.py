@@ -21,7 +21,7 @@ from .api import (
 )
 from . import const
 from . import get_entity
-from .history import get_history
+from . import history
 from .const import LOGGER
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.helpers import entity_registry
@@ -69,6 +69,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             const.LAMBDA_POSTCODE: self.postcode}
         self._lambda_update_handler = LambdaUpdateHandler(
             hass=self.hass,
+            client=self.client,
             climate_entity_id=self._climate_entity_id,
             heat_pump_power_entity_id=self._heat_pump_power_entity_id,
             external_temp_entity_id=self._external_temp_entity_id,
@@ -272,7 +273,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             # Integration is disabled, don't call lambda
             return self.data
         try:
-            data = await self._lambda_update_handler(self.client, self.lambda_args)
+            data = await self._lambda_update_handler(self.lambda_args)
             await self.update_heat_pump_temperature(data)
             self._available = True
             return data
@@ -283,15 +284,16 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
 
 
 class LambdaUpdateHandler:
-    """Returns the lambda data for the current time.
+    """Handles everything lambda.
 
-    It will call the lambda function once a day and store the results.
+    Gets the heating profile and ensure dynamo is up to date.
     """
 
-    def __init__(self, hass, climate_entity_id, heat_pump_power_entity_id, external_temp_entity_id,
-                 user_hash, postcode, tariff):
+    def __init__(self, hass, client: OptisparkApiClient, climate_entity_id,
+                 heat_pump_power_entity_id, external_temp_entity_id, user_hash, postcode, tariff):
         """Init."""
         self.hass = hass
+        self.client: OptisparkApiClient = client
         self.climate_entity_id = climate_entity_id
         self.heat_pump_power_entity_id = heat_pump_power_entity_id
         self.external_temp_entity_id = external_temp_entity_id
@@ -301,41 +303,203 @@ class LambdaUpdateHandler:
         self.london_tz = pytz.timezone('Europe/London')
         self.expire_time = datetime(1, 1, 1, 0, 0, 0, tzinfo=self.london_tz)  # Already expired
         self.manual_update = False
-        self.oldest_dates = None
+        self.history_upload_complete = False
+        self.id_to_column_name_lookup = {
+            climate_entity_id: const.DATABASE_COLUMN_SENSOR_CLIMATE_ENTITY,
+            heat_pump_power_entity_id: const.DATABASE_COLUMN_SENSOR_HEAT_PUMP_POWER,
+            external_temp_entity_id: const.DATABASE_COLUMN_SENSOR_EXTERNAL_TEMPERATURE}
+        # Entity ids will be None if they are optional and not enabled
+        self.active_entity_ids = []
+        for entity_id in [climate_entity_id, heat_pump_power_entity_id, external_temp_entity_id]:
+            if entity_id is not None:
+                self.active_entity_ids.append(entity_id)
 
-    async def __call__(self, client: OptisparkApiClient, lambda_args):
-        """Return lambda data for the current time."""
+    def get_missing_histories_boundary(self, history_states, dynamo_date):
+        """Get index where history_state matches dynamo_date."""
+        idx_bound= len(history_states)
+        for idx, datum in enumerate(history_states):
+            if datum.last_updated.replace(tzinfo=None) >= dynamo_date:
+                idx_bound = idx
+                break
+        return idx_bound
+
+    def get_missing_old_histories_states(self, history_states, column):
+        """Get states that are older than anything in dynamo."""
+        dynamo_date = self.dynamo_oldest_dates[column]
+        if dynamo_date is None:
+            # No data in dynamo
+            dynamo_date = datetime(3000, 1)  # Everything will be old
+        idx_bound = self.get_missing_histories_boundary(
+            history_states,
+            dynamo_date)
+        return history_states[:idx_bound]
+
+    def get_missing_new_histories_states(self, history_states, column):
+        """Get states that are newer than anything in dynamo."""
+        dynamo_date = self.dynamo_newest_dates[column]
+        if dynamo_date is None:
+            # No data in dynamo - upload first x days
+            dynamo_date = datetime.now() - timedelta(days=const.HISTORY_DAYS)
+        idx_bound = self.get_missing_histories_boundary(
+            history_states,
+            dynamo_date)
+        return history_states[idx_bound+1:]
+
+    async def upload_new_history(self):
+        """Upload section of new history states that are older than anything in dynamo.
+
+        self.dynamo_dates is updated so that if this function is called again a new section will be
+        uploaded.
+        const.MAX_UPLOAD_HISTORY_READINGS number of readings are uploaded to avoid long delay.
+        """
+        histories = {}
+        constant_attributes = {}
+        for active_entity_id in self.active_entity_ids:
+            column = self.id_to_column_name_lookup[active_entity_id]
+            history_states = await history.get_state_changes(
+                self.hass,
+                active_entity_id,
+                const.DYNAMO_HISTORY_DAYS)
+            missing_new_histories_states = self.get_missing_new_histories_states(history_states, column)
+
+            LOGGER.debug(f'  column: {column}')
+            if len(missing_new_histories_states) == 0:
+                LOGGER.debug(f'    ({column}) - Upload complete')
+                continue
+            LOGGER.debug(f'    len(missing_new_histories_states): {len(missing_new_histories_states)}')
+            missing_new_histories_states = missing_new_histories_states[:const.MAX_UPLOAD_HISTORY_READINGS]
+
+            histories[column], constant_attributes[column] = history.states_to_histories(
+                self.hass,
+                column,
+                missing_new_histories_states)
+        if histories == {}:
+            raise RuntimeError('No missing history data to upload')
+        dynamo_data = history.histories_to_dynamo_data(
+            self.hass,
+            histories,
+            constant_attributes,
+            self.user_hash,
+            self.climate_entity_id,
+            self.postcode,
+            self.tariff)
+        self.dynamo_oldest_dates, self.dynamo_newest_dates = await self.client.upload_history(dynamo_data)
+
+    async def upload_old_history(self):
+        """Upload section of old history states that are older than anything in dynamo.
+
+        self.dynamo_dates is updated so that if this function is called again a new section will be
+        uploaded.
+        const.MAX_UPLOAD_HISTORY_READINGS number of readings are uploaded to avoid long delay.
+        """
+        LOGGER.debug('Uploading portion of old history...')
+        histories = {}
+        constant_attributes = {}
+        for active_entity_id in self.active_entity_ids:
+            column = self.id_to_column_name_lookup[active_entity_id]
+            history_states = await history.get_state_changes(
+                self.hass,
+                active_entity_id,
+                const.DYNAMO_HISTORY_DAYS)
+            missing_old_histories_states = self.get_missing_old_histories_states(history_states, column)
+
+            LOGGER.debug(f'  column: {column}')
+            if len(missing_old_histories_states) == 0:
+                LOGGER.debug(f'    ({column}) - Upload complete')
+                continue
+            LOGGER.debug(f'    len(missing_old_histories_states): {len(missing_old_histories_states)}')
+            missing_old_histories_states = missing_old_histories_states[-const.MAX_UPLOAD_HISTORY_READINGS:]
+
+            histories[column], constant_attributes[column] = history.states_to_histories(
+                self.hass,
+                column,
+                missing_old_histories_states)
+        if histories == {}:
+            self.history_upload_complete = True
+            LOGGER.debug('History upload complete\n')
+            return
+        dynamo_data = history.histories_to_dynamo_data(
+            self.hass,
+            histories,
+            constant_attributes,
+            self.user_hash,
+            self.climate_entity_id,
+            self.postcode,
+            self.tariff)
+        self.dynamo_oldest_dates, self.dynamo_newest_dates = await self.client.upload_history(dynamo_data)
+
+    async def __call__(self, lambda_args):
+        """Return lambda data for the current time.
+
+        Calls lambda if new heating profile is needed
+        Otherwise, slowly uploads historical data
+        """
         london_time_now = datetime.now(self.london_tz)
         # This probably won't result in a smooth transition
         if self.expire_time - london_time_now < timedelta(hours=0) or self.manual_update:
-            await self.call_lambda(client, lambda_args)
+            await self.call_lambda(lambda_args)
+        else:
+            if self.history_upload_complete is False:
+                await self.upload_old_history()
         return self.get_closest_time()
 
-    async def call_lambda(self, client: OptisparkApiClient, lambda_args):
-        """Fetch data from AWS Lambda.
+    async def update_dynamo_dates(self):
+        """Call the lambda function and get the oldest and newest dates in dynamodb."""
+        self.dynamo_oldest_dates, self.dynamo_newest_dates = await self.client.get_data_dates(
+            dynamo_data={'user_hash': self.user_hash})
 
-        Records the when the data expires (is no longer relevant).
-        """
-        LOGGER.debug(f'********** self.expire_time: {self.expire_time}')
-        self.manual_update = False
-        dynamo_data = await get_history(
+    async def update_ha_dates(self):
+        """Get the oldest and newest dates in HA histories for active_entity_ids."""
+        self.ha_oldest_dates, self.ha_newest_dates = await history.get_earliest_and_latest_data_dates(
             hass=self.hass,
-            history_days=1,
             climate_entity_id=self.climate_entity_id,
             heat_pump_power_entity_id=self.heat_pump_power_entity_id,
-            external_temp_entity_id=self.external_temp_entity_id,
-            user_hash=self.user_hash,
-            postcode=self.postcode,
-            tariff=self.tariff,
-            include_user_info=True)
+            external_temp_entity_id=self.external_temp_entity_id)
 
-        self.lambda_results, self.oldest_dates = await client.async_get_data(lambda_args, dynamo_data)
+    def is_new_data_missing_from_dynamo(self):
+        """Is there any new data that needs to be uploaded.
+
+        If there is data in HA histories for active_entity_ids that is newer than what is in dynamo,
+        return True.
+        """
+        for active_entity_id in self.active_entity_ids:
+            column = self.id_to_column_name_lookup[active_entity_id]
+            if self.dynamo_newest_dates[column] is None:
+                # First run, therefore data is missing
+                LOGGER.debug(f'First run, upload ({const.HISTORY_DAYS}) days of history...\n')
+                return True
+            if self.dynamo_newest_dates[column] < self.ha_newest_dates[column]:
+                LOGGER.debug(f'self.dynamo_newest_dates[{column}]: {self.dynamo_newest_dates[column]}')
+                LOGGER.debug(f'self.ha_newest_dates[{column}]: {self.ha_newest_dates[column]}')
+                return True
+        return False
+
+    async def call_lambda(self, lambda_args):
+        """Fetch heating profile from AWS Lambda.
+
+        Upload all new and missing data to dynamo first.
+        If there is no data in dynamo, upload const.HISTORY_DAYS worth of data.
+        Records the when the heating profile expires and should be refreshed.
+        """
+        LOGGER.debug(f'********** self.expire_time: {self.expire_time}')
+        count = 0
+        await self.update_dynamo_dates()
+        await self.update_ha_dates()
+        while self.is_new_data_missing_from_dynamo():
+            count += 1
+            LOGGER.debug(f'Updating dynamo with NEW data: round ({count})')
+            await self.upload_new_history()
+        LOGGER.debug('Upload of new history complete\n')
+
+        self.lambda_results = await self.client.async_get_profile(lambda_args)
+
         time_str = self.lambda_results[const.LAMBDA_OPTIMISED_DEMAND][-1]['x']
         self.expire_time = datetime.strptime(time_str, '%Y-%m-%d %H:%M')
         self.expire_time = self.expire_time.replace(tzinfo=self.london_tz)
         # The backend will currently only update upon a new day. FIX!
         self.expire_time = self.expire_time + timedelta(hours=1, minutes=30)
         LOGGER.debug(f'---------- self.expire_time: {self.expire_time}')
+        self.manual_update = False
 
     def get_closest_time(self):
         """Get the closest matching time to now from the lambda data set provided."""

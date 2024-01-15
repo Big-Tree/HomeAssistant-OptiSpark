@@ -12,6 +12,7 @@ import pickle
 import gzip
 import base64
 from .const import LOGGER
+import traceback
 
 
 class OptisparkApiClientError(Exception):
@@ -91,31 +92,57 @@ class OptisparkApiClient:
         """Sample API Client."""
         self._session = session
 
+    def extra_to_datetime(self, extra):
+        """Corvert unix_time to datetime object."""
+        if 'oldest_dates' in extra and 'newest_dates' in extra:
+            # Convert from unix time to datetime object
+            for key in ['oldest_dates', 'newest_dates']:
+                for column in extra[key]:
+                    if extra[key][column] is not None:
+                        extra[key][column] = datetime.fromtimestamp(extra[key][column])
+        return extra
+
     async def upload_history(self, dynamo_data):
         """Upload historical data to dynamoDB without calculating heat pump profile."""
         lambda_url = 'https://lhyj2mknjfmatuwzkxn4uuczrq0fbsbd.lambda-url.eu-west-2.on.aws/'
         payload = {'dynamo_data': dynamo_data}
         payload['upload_only'] = True
-        await self._api_wrapper(
+        extra = await self._api_wrapper(
             method="post",
             url=lambda_url,
             data=payload,
-            headers={"Content-type": "application/json; charset=UTF-8"},
         )
+        extra = self.extra_to_datetime(extra)
+        return extra['oldest_dates'], extra['newest_dates']
 
-    async def async_get_data(self, lambda_args: dict, dynamo_data: dict) -> any:
-        """Upload historical data to dynamoDB and calculate heat pump profile."""
+    async def get_data_dates(self, dynamo_data: dict):
+        """Call lambda and only get the newest and oldest dates in dynamo.
+
+        dynamo_data will only contain the user_hash.
+        """
+        lambda_url = 'https://lhyj2mknjfmatuwzkxn4uuczrq0fbsbd.lambda-url.eu-west-2.on.aws/'
+        payload = {'dynamo_data': dynamo_data}
+        payload['get_newest_oldest_data_date_only'] = True
+        extra = await self._api_wrapper(
+            method="post",
+            url=lambda_url,
+            data=payload,
+        )
+        extra = self.extra_to_datetime(extra)
+        return extra['oldest_dates'], extra['newest_dates']
+
+    async def async_get_profile(self, lambda_args: dict):
+        """Get heat pump profile only."""
         lambda_url = 'https://lhyj2mknjfmatuwzkxn4uuczrq0fbsbd.lambda-url.eu-west-2.on.aws/'
 
         payload = lambda_args
-        payload['dynamo_data'] = dynamo_data
-        results, errors, extra = await self._api_wrapper(
+        payload['get_profile_only'] = True
+        LOGGER.debug('----------Lambda get profile----------')
+        results, errors = await self._api_wrapper(
             method="post",
             url=lambda_url,
             data=payload,
-            headers={"Content-type": "application/json; charset=UTF-8"},
         )
-        LOGGER.debug('----------Lambda request----------')
         if errors['success'] is False:
             LOGGER.debug(f'OptisparkApiClientLambdaError: {errors["error_message"]}')
             raise OptisparkApiClientLambdaError(errors['error_message'])
@@ -124,18 +151,18 @@ class OptisparkApiClient:
             results['projected_percent_savings'] = 100
         else:
             results['projected_percent_savings'] = results['base_cost']/results['optimised_cost']*100 - 100
-        return results, extra['oldest_dates']
+        return results
 
     async def _api_wrapper(
         self,
         method: str,
         url: str,
         data: dict | None = None,
-        headers: dict | None = None,
     ):
         """Call the Lambda function."""
         try:
-            data['dynamo_data'] = floats_to_decimal(data['dynamo_data'])
+            if 'dynamo_data' in data:
+                data['dynamo_data'] = floats_to_decimal(data['dynamo_data'])
             uncompressed_data = pickle.dumps(data)
             compressed_data = gzip.compress(uncompressed_data)
             LOGGER.debug(f'len(uncompressed_data): {len(uncompressed_data)}')
@@ -146,7 +173,6 @@ class OptisparkApiClient:
                 response = await self._session.request(
                     method=method,
                     url=url,
-                    #headers=headers,
                     json=base64_string,
                 )
                 if response.status in (401, 403):
@@ -162,16 +188,19 @@ class OptisparkApiClient:
                 return await response.json()
 
         except asyncio.TimeoutError as exception:
+            LOGGER.error(traceback.format_exc())
             LOGGER.error('OptisparkApiClientTimeoutError:\n  Timeout error fetching information')
             raise OptisparkApiClientTimeoutError(
                 "Timeout error fetching information",
             ) from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
+            LOGGER.error(traceback.format_exc())
             LOGGER.error('OptisparkApiClientCommunicationError:\n  Error fetching information')
             raise OptisparkApiClientCommunicationError(
                 "Error fetching information",
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
+            LOGGER.error(traceback.format_exc())
             LOGGER.error('OptisparkApiClientError:\n  Something really wrong happened!')
             raise OptisparkApiClientError(
                 "Something really wrong happened!"

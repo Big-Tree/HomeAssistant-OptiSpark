@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import selector
 from geopy.adapters import AioHTTPAdapter
 from geopy.geocoders import Nominatim
@@ -13,15 +12,10 @@ import traceback
 from .api import (
     OptisparkApiClientPostcodeError,
     OptisparkApiClientUnitError,
-    OptisparkApiClient,
-    OptisparkApiClientTimeoutError,
-    OptisparkApiClientCommunicationError,
-    OptisparkApiClientError
 )
 from . import OptisparkGetEntityError
 from .const import DOMAIN, LOGGER
-from . import const, get_entity, get_username
-from .history import get_history, OptisparkGetHistoryError
+from . import get_entity, get_username
 
 
 class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -155,37 +149,9 @@ class OptisparkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 user_hash = hashlib.sha256(user_hash.encode('utf-8')).hexdigest()
                 user_input['user_hash'] = user_hash
 
-                try:
-                    dynamo_data = await get_history(
-                        hass=self.hass,
-                        history_days=const.HISTORY_DAYS,
-                        climate_entity_id=user_input['climate_entity_id'],
-                        heat_pump_power_entity_id=user_input['heat_pump_power_entity_id'],
-                        external_temp_entity_id=user_input['external_temp_entity_id'],
-                        user_hash=user_hash,
-                        postcode=user_input['postcode'],
-                        tariff=user_input['tariff'],
-                        include_user_info=False)
-                    LOGGER.debug('************ Uploading history ***********')
-                    tmp_client = OptisparkApiClient(
-                        session=async_get_clientsession(self.hass))
-
-                    await tmp_client.upload_history(dynamo_data)
-                    LOGGER.debug('************ Upload complete ***********')
-
-                except OptisparkApiClientTimeoutError:
-                    errors['base'] = 'optispark_timeout_error'
-                except OptisparkApiClientCommunicationError:
-                    errors['base'] = 'optispark_communication_error'
-                except OptisparkApiClientError:
-                    errors['base'] = 'optispark_communication_error'
-                except OptisparkGetHistoryError:
-                    errors['base'] = 'optispark_history_error'
-
-                if errors == {}:
-                    return self.async_create_entry(
-                        title='OptiSpark Entry',
-                        data=user_input)
+                return self.async_create_entry(
+                    title='OptiSpark Entry',
+                    data=user_input)
             else:
                 errors['base'] = 'accept_agreement'
         data_schema = {}

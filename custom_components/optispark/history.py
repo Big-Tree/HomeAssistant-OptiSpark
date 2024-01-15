@@ -65,7 +65,7 @@ def get_user_info(hass, heat_pump_entity_id, postcode, tariff):
             'tariff': tariff}
 
 
-def climate_history(hass, climate_entity_id, state_changes):
+def climate_history(hass, state_changes):
     """Climate history.
 
     Home assistant logs the temperature states in whatever unit is set by the user (not the heat
@@ -112,7 +112,7 @@ def climate_history(hass, climate_entity_id, state_changes):
 
     return history, constant_attributes
 
-def external_temp_history(_hass, _entity_id, state_changes):
+def external_temp_history(_hass, state_changes):
     """External temperature history.
 
     The sensor will be displayed in whatever unit the sensor is set to. This is odd.  It ignores the
@@ -158,7 +158,7 @@ def external_temp_history(_hass, _entity_id, state_changes):
     return history, constant_attributes
 
 
-def power_history(_hass, _entity_id, state_changes):
+def power_history(_hass, state_changes):
     """Heat pump power use history.
 
     Home assistant includes units in each power usage log.  There are no issues converting
@@ -214,7 +214,40 @@ async def get_state_changes(hass, entity_id, history_days):
     state_changes = await get_instance(hass).async_add_executor_job(
         state_changes_during_period,
         *args)
+    # Remove firt entity because of time bug
+    # The time stamp of the first entity always appears to be start_time.
+    # Running this function twice can therefore give different times for the first entity because
+    # the start_time will change
+    del state_changes[entity_id][0]
     return state_changes[entity_id]
+
+
+def states_to_histories(hass, column_name, state_changes):
+    """Clean up history states.
+
+    Extracts relevent information from the states and ensures that everything is in the right data
+    type.
+    """
+    function_lookup = {
+        const.DATABASE_COLUMN_SENSOR_CLIMATE_ENTITY: climate_history,
+        const.DATABASE_COLUMN_SENSOR_HEAT_PUMP_POWER: power_history,
+        const.DATABASE_COLUMN_SENSOR_EXTERNAL_TEMPERATURE: external_temp_history}
+    histories, constant_attributes = function_lookup[column_name](
+        hass,
+        state_changes)
+    return histories, constant_attributes
+
+
+def histories_to_dynamo_data(hass, histories, constant_attributes, user_hash, heat_pump_entity_id,
+                             postcode, tariff):
+    """Package the history data so that it's ready for upload to lambda."""
+    user_info = get_user_info(hass, heat_pump_entity_id, postcode, tariff)
+    dynamo_data = {
+        'histories': histories,
+        'constant_attributes': constant_attributes,
+        'user_info': user_info,
+        'user_hash': user_hash}
+    return dynamo_data
 
 
 async def get_history(hass, history_days: int, climate_entity_id, heat_pump_power_entity_id,
@@ -243,20 +276,35 @@ async def get_history(hass, history_days: int, climate_entity_id, heat_pump_powe
             continue
         column_name = column_name_lookup[entity_id]
         state_changes = await get_state_changes(hass, entity_id, history_days)
-        histories[column_name], constant_attributes[column_name] = function_lookup[entity_id](
+        histories[column_name], constant_attributes[column_name] = states_to_histories(
             hass,
-            entity_id,
+            column_name,
             state_changes)
 
 
-    if include_user_info:
-        user_info = get_user_info(hass, climate_entity_id, postcode, tariff)
-    else:
-        user_info = {}
-
-    dynamo_data = {
-        'histories': histories,
-        'constant_attributes': constant_attributes,
-        'user_info': user_info,
-        'user_hash': user_hash}
+    dynamo_data = histories_to_dynamo_data(hass, histories, constant_attributes, user_hash,
+                                           heat_pump_power_entity_id, postcode, tariff)
     return dynamo_data
+
+
+async def get_earliest_and_latest_data_dates(hass, climate_entity_id, heat_pump_power_entity_id,
+                                             external_temp_entity_id):
+    """For each entity id find the earliest date that data has been recorded and the latest date.
+
+    Does not check further back than const.DYNAMO_HISTORY_DAYS (5 years).
+    """
+    entity_id_to_column_name = {
+        climate_entity_id: const.DATABASE_COLUMN_SENSOR_CLIMATE_ENTITY,
+        heat_pump_power_entity_id: const.DATABASE_COLUMN_SENSOR_HEAT_PUMP_POWER,
+        external_temp_entity_id: const.DATABASE_COLUMN_SENSOR_EXTERNAL_TEMPERATURE}
+
+    earliest_dates = {}
+    latest_dates = {}
+    for entity_id in entity_id_to_column_name:
+        if entity_id is None:
+            LOGGER.debug(f'({entity_id_to_column_name[entity_id]}) entity missing, skipping...')
+            continue
+        state_changes = await get_state_changes(hass, entity_id, const.DYNAMO_HISTORY_DAYS)
+        earliest_dates[entity_id_to_column_name[entity_id]] = state_changes[0].last_updated.replace(tzinfo=None)
+        latest_dates[entity_id_to_column_name[entity_id]] = state_changes[-1].last_updated.replace(tzinfo=None)
+    return earliest_dates, latest_dates
