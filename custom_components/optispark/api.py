@@ -95,7 +95,6 @@ class OptisparkApiClient:
     def extra_to_datetime(self, extra):
         """Corvert unix_time to datetime object."""
         if 'oldest_dates' in extra and 'newest_dates' in extra:
-            # Convert from unix time to datetime object
             for key in ['oldest_dates', 'newest_dates']:
                 for column in extra[key]:
                     if extra[key][column] is not None:

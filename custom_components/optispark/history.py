@@ -7,7 +7,7 @@ All values in °F are converted to °C
 All values in W are converted to kW
 """
 
-from homeassistant.components.recorder.history import state_changes_during_period
+from homeassistant.components.recorder.history import get_significant_states
 from homeassistant.components.recorder.util import get_instance
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity_registry import RegistryEntry
@@ -206,22 +206,27 @@ async def get_state_changes(hass, entity_id, history_days):
     """History of state changes for entity_id."""
     start_time = pytz.UTC.localize(datetime.utcnow() - timedelta(days=history_days))
     end_time = pytz.UTC.localize(datetime.utcnow())
-    no_attributes = False
-    descending = False
-    limit = None
+    filters = None
     include_start_time_state = False
+    significant_changes_only = False
+    minimal_response = False
+    no_attributes = False
+    compressed_state_format = False
     args = [
         hass,
         start_time,
         end_time,
-        entity_id,
+        [entity_id],
+        filters,
+        include_start_time_state,
+        significant_changes_only,
+        minimal_response,
         no_attributes,
-        descending,
-        limit,
-        include_start_time_state]
+        compressed_state_format]
     state_changes = await get_instance(hass).async_add_executor_job(
-        state_changes_during_period,
+        get_significant_states,
         *args)
+
     return state_changes[entity_id]
 
 
