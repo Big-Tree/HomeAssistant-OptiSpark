@@ -206,19 +206,22 @@ async def get_state_changes(hass, entity_id, history_days):
     """History of state changes for entity_id."""
     start_time = pytz.UTC.localize(datetime.utcnow() - timedelta(days=history_days))
     end_time = pytz.UTC.localize(datetime.utcnow())
+    no_attributes = False
+    descending = False
+    limit = None
+    include_start_time_state = False
     args = [
         hass,
         start_time,
         end_time,
-        entity_id]
+        entity_id,
+        no_attributes,
+        descending,
+        limit,
+        include_start_time_state]
     state_changes = await get_instance(hass).async_add_executor_job(
         state_changes_during_period,
         *args)
-    # Remove firt entity because of time bug
-    # The time stamp of the first entity always appears to be start_time.
-    # Running this function twice can therefore give different times for the first entity because
-    # the start_time will change
-    del state_changes[entity_id][0]
     return state_changes[entity_id]
 
 
