@@ -63,10 +63,12 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         self._switch_enabled = False  # The switch will set this at startup
         self._available = False
         self._lambda_args = {
-            const.LAMBDA_HOUSE_CONFIG: None,
             const.LAMBDA_SET_POINT: 20.0,
-            const.LAMBDA_TEMP_RANGE: 3.0,
-            const.LAMBDA_POSTCODE: self.postcode}
+            const.LAMBDA_TEMP_RANGE: 2.0,
+            const.LAMBDA_POSTCODE: self.postcode,
+            const.LAMBDA_USER_HASH: user_hash,
+            const.LAMBDA_INITIAL_INTERNAL_TEMP: None  # <-- This will be set to current temp
+        }
         self._lambda_update_handler = LambdaUpdateHandler(
             hass=self.hass,
             client=self.client,
@@ -124,7 +126,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def update_heat_pump_temperature(self, data):
         """Set the temperature of the heat pump using the value from lambda."""
-        temp: float = data[const.LAMBDA_TEMP]
+        temp: float = data[const.LAMBDA_TEMP_CONTROLS]
         climate_entity = get_entity(self.hass, self._climate_entity_id)
 
         try:
@@ -246,7 +248,10 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
 
     @property
     def lambda_args(self):
-        """Returns the lamba arguments."""
+        """Returns the lambda arguments.
+
+        Updates the initial_internal_temp."""
+        self._lambda_args[const.LAMBDA_INITIAL_INTERNAL_TEMP] = self.house_temperature
         return self._lambda_args
 
     @property
@@ -416,7 +421,9 @@ class LambdaUpdateHandler:
                 missing_old_histories_states)
         if histories == {}:
             self.history_upload_complete = True
-            LOGGER.debug('History upload complete\n')
+            LOGGER.debug('History upload complete, recalculate heating profile...\n')
+            # Now that we have all the history, recalculate heating profile
+            self.manual_update = True
             return
         dynamo_data = history.histories_to_dynamo_data(
             self.hass,
@@ -507,6 +514,7 @@ class LambdaUpdateHandler:
             const.LAMBDA_BASE_DEMAND,
             const.LAMBDA_PRICE,
             const.LAMBDA_TEMP,
+            const.LAMBDA_TEMP_CONTROLS,
             const.LAMBDA_OPTIMISED_DEMAND]
         non_time_based_keys = [
             const.LAMBDA_BASE_COST,
