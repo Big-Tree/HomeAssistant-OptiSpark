@@ -92,15 +92,6 @@ class OptisparkApiClient:
         """Sample API Client."""
         self._session = session
 
-    def extra_to_datetime(self, extra):
-        """Corvert unix_time to datetime object."""
-        if 'oldest_dates' in extra and 'newest_dates' in extra:
-            for key in ['oldest_dates', 'newest_dates']:
-                for column in extra[key]:
-                    if extra[key][column] is not None:
-                        extra[key][column] = datetime.fromtimestamp(extra[key][column])
-        return extra
-
     async def upload_history(self, dynamo_data):
         """Upload historical data to dynamoDB without calculating heat pump profile."""
         lambda_url = 'https://lhyj2mknjfmatuwzkxn4uuczrq0fbsbd.lambda-url.eu-west-2.on.aws/'
@@ -111,7 +102,6 @@ class OptisparkApiClient:
             url=lambda_url,
             data=payload,
         )
-        extra = self.extra_to_datetime(extra)
         return extra['oldest_dates'], extra['newest_dates']
 
     async def get_data_dates(self, dynamo_data: dict):
@@ -127,7 +117,6 @@ class OptisparkApiClient:
             url=lambda_url,
             data=payload,
         )
-        extra = self.extra_to_datetime(extra)
         return extra['oldest_dates'], extra['newest_dates']
 
     async def async_get_profile(self, lambda_args: dict):
@@ -152,6 +141,23 @@ class OptisparkApiClient:
             results['projected_percent_savings'] = results['base_cost']/results['optimised_cost']*100 - 100
         return results
 
+    def json_serialisable(self, data):
+        """Convert to compressed bytes so that data can be converted to json."""
+        uncompressed_data = pickle.dumps(data)
+        compressed_data = gzip.compress(uncompressed_data)
+        LOGGER.debug(f'len(uncompressed_data): {len(uncompressed_data)}')
+        LOGGER.debug(f'len(compressed_data): {len(compressed_data)}')
+        base64_string = base64.b64encode(compressed_data).decode('utf-8')
+        return base64_string
+
+    def json_deserialise(self, payload):
+        """Convert from the compressed bytes to original objects."""
+        payload = payload['serialised_payload']
+        payload = base64.b64decode(payload)
+        payload = gzip.decompress(payload)
+        payload = pickle.loads(payload)
+        return payload
+
     async def _api_wrapper(
         self,
         method: str,
@@ -162,17 +168,13 @@ class OptisparkApiClient:
         try:
             if 'dynamo_data' in data:
                 data['dynamo_data'] = floats_to_decimal(data['dynamo_data'])
-            uncompressed_data = pickle.dumps(data)
-            compressed_data = gzip.compress(uncompressed_data)
-            LOGGER.debug(f'len(uncompressed_data): {len(uncompressed_data)}')
-            LOGGER.debug(f'len(compressed_data): {len(compressed_data)}')
-            base64_string = base64.b64encode(compressed_data).decode('utf-8')
+            data = self.json_serialisable(data)
 
             async with async_timeout.timeout(40):
                 response = await self._session.request(
                     method=method,
                     url=url,
-                    json=base64_string,
+                    json=data,
                 )
                 if response.status in (401, 403):
                     raise OptisparkApiClientAuthenticationError(
@@ -184,7 +186,8 @@ class OptisparkApiClient:
                     raise OptisparkApiClientCommunicationError(
                         '502 Bad Gateway - check payload')
                 response.raise_for_status()
-                return await response.json()
+                payload = await response.json()
+                return self.json_deserialise(payload)
 
         except asyncio.TimeoutError as exception:
             LOGGER.error(traceback.format_exc())

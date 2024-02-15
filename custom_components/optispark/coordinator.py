@@ -250,7 +250,8 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
     def lambda_args(self):
         """Returns the lambda arguments.
 
-        Updates the initial_internal_temp."""
+        Updates the initial_internal_temp.
+        """
         self._lambda_args[const.LAMBDA_INITIAL_INTERNAL_TEMP] = self.house_temperature
         return self._lambda_args
 
@@ -351,7 +352,7 @@ class LambdaUpdateHandler:
         return history_states[idx_bound+1:]
 
     async def upload_new_history(self):
-        """Upload section of new history states that are older than anything in dynamo.
+        """Upload section of new history states that are newer than anything in dynamo.
 
         self.dynamo_dates is updated so that if this function is called again a new section will be
         uploaded.
