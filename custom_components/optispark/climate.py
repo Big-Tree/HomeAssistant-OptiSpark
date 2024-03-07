@@ -154,7 +154,7 @@ class OptisparkClimate(OptisparkEntity, ClimateEntity):
     @property
     def current_temperature(self) -> float:
         """House temperature measured by the heat pump."""
-        return self.coordinator.house_temperature
+        return self.coordinator.internal_temp
 
     @property
     def is_aux_heat(self) -> int:

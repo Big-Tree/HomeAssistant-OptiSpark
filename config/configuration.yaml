@@ -1,12 +1,30 @@
-# https://www.home-assistant.io/integrations/default_config/
-default_config:
 
-# https://www.home-assistant.io/integrations/logger/
+# Loads default set of integrations. Do not remove.
+default_config:
+homeassistant:
+  latitude: 51.518816
+  longitude: -0.090653
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+# Example configuration.yaml entry
+wake_on_lan:
+
+# Example configuration.yaml entry
+switch:
+  - platform: wake_on_lan
+    mac: 18:31:bf:b8:c0:37
+http:
+  #server_port: 8011
+  server_port: 8008
+
 logger:
   default: info
   logs:
     custom_components.optispark: debug
-
-http:
-  #server_port: 8011
-  server_port: 8010

@@ -1,8 +1,7 @@
 """DataUpdateCoordinator for optispark."""
 from __future__ import annotations
 
-from datetime import timedelta, datetime
-import pytz
+from datetime import timedelta, datetime, timezone
 import traceback
 
 from homeassistant.core import HomeAssistant
@@ -26,6 +25,7 @@ from .const import LOGGER
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import template
+import numpy as np
 
 
 class OptisparkSetTemperatureError(Exception):
@@ -67,7 +67,8 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             const.LAMBDA_TEMP_RANGE: 2.0,
             const.LAMBDA_POSTCODE: self.postcode,
             const.LAMBDA_USER_HASH: user_hash,
-            const.LAMBDA_INITIAL_INTERNAL_TEMP: None  # <-- This will be set to current temp
+            const.LAMBDA_INITIAL_INTERNAL_TEMP: None,
+            const.LAMBDA_OUTSIDE_RANGE: False
         }
         self._lambda_update_handler = LambdaUpdateHandler(
             hass=self.hass,
@@ -214,7 +215,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         return temperature
 
     @property
-    def house_temperature(self):
+    def internal_temp(self):
         """Internal temperature of the heat pump."""
         entity = get_entity(self.hass, self._climate_entity_id)
         out = self.convert_climate_from_farenheit(entity, entity.current_temperature)
@@ -250,9 +251,13 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
     def lambda_args(self):
         """Returns the lambda arguments.
 
-        Updates the initial_internal_temp.
+        Updates the initial_internal_temp and checks outside_range.
         """
-        self._lambda_args[const.LAMBDA_INITIAL_INTERNAL_TEMP] = self.house_temperature
+        self._lambda_args[const.LAMBDA_INITIAL_INTERNAL_TEMP] = self.internal_temp
+        if abs(self.internal_temp - self._lambda_args[const.LAMBDA_SET_POINT]) > self._lambda_args[const.LAMBDA_TEMP_RANGE]:
+            self._lambda_args[const.LAMBDA_OUTSIDE_RANGE] = True
+        else:
+            self._lambda_args[const.LAMBDA_OUTSIDE_RANGE] = False
         return self._lambda_args
 
     @property
@@ -306,10 +311,10 @@ class LambdaUpdateHandler:
         self.user_hash = user_hash
         self.postcode = postcode
         self.tariff = tariff
-        self.london_tz = pytz.timezone('Europe/London')
-        self.expire_time = datetime(1, 1, 1, 0, 0, 0, tzinfo=self.london_tz)  # Already expired
+        self.expire_time = datetime(1, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # Already expired
         self.manual_update = False
         self.history_upload_complete = False
+        self.outside_range_flag = False
         self.id_to_column_name_lookup = {
             climate_entity_id: const.DATABASE_COLUMN_SENSOR_CLIMATE_ENTITY,
             heat_pump_power_entity_id: const.DATABASE_COLUMN_SENSOR_HEAT_PUMP_POWER,
@@ -322,11 +327,10 @@ class LambdaUpdateHandler:
 
     def get_missing_histories_boundary(self, history_states, dynamo_date):
         """Get index where history_state matches dynamo_date."""
-        idx_bound= len(history_states)
         for idx, datum in enumerate(history_states):
             if datum.last_updated.replace(tzinfo=None) >= dynamo_date:
                 idx_bound = idx
-                break
+                return idx_bound
         return idx_bound
 
     def get_missing_old_histories_states(self, history_states, column):
@@ -349,9 +353,14 @@ class LambdaUpdateHandler:
         idx_bound = self.get_missing_histories_boundary(
             history_states,
             dynamo_date)
-        return history_states[idx_bound+1:]
+        if idx_bound == len(history_states) - 1:
+            error = True
+        else:
+            error = False
+        return history_states[idx_bound+1:], error
 
-    async def upload_new_history(self):
+
+    async def upload_new_history(self, missing_entities):
         """Upload section of new history states that are newer than anything in dynamo.
 
         self.dynamo_dates is updated so that if this function is called again a new section will be
@@ -360,13 +369,31 @@ class LambdaUpdateHandler:
         """
         histories = {}
         constant_attributes = {}
-        for active_entity_id in self.active_entity_ids:
+        async def debug_check_history_length(days):
+            history_states = await history.get_state_changes(
+                self.hass,
+                active_entity_id,
+                days)
+            print(f'---------- days: {days} ----------')
+            print(f'  history_states[0]: {history_states[0].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
+            print(f'  history_states[-1]: {history_states[-1].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
+
+            history_states = await history.get_state_changes_period(
+                self.hass,
+                active_entity_id,
+                days)
+            print(f'  history_states[0]: {history_states[0].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
+            print(f'  history_states[-1]: {history_states[-1].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
+
+        for active_entity_id in missing_entities:
             column = self.id_to_column_name_lookup[active_entity_id]
             history_states = await history.get_state_changes(
                 self.hass,
                 active_entity_id,
                 const.DYNAMO_HISTORY_DAYS)
-            missing_new_histories_states = self.get_missing_new_histories_states(history_states, column)
+            missing_new_histories_states, error = self.get_missing_new_histories_states(history_states, column)
+            if error:
+                raise RuntimeError('No missing history data to upload, should not have gotten here')
 
             LOGGER.debug(f'  column: {column}')
             if len(missing_new_histories_states) == 0:
@@ -374,13 +401,16 @@ class LambdaUpdateHandler:
                 continue
             LOGGER.debug(f'    len(missing_new_histories_states): {len(missing_new_histories_states)}')
             missing_new_histories_states = missing_new_histories_states[:const.MAX_UPLOAD_HISTORY_READINGS]
+            LOGGER.debug(f'    len(missing_new_histories_states): {len(missing_new_histories_states)}')
+            LOGGER.debug(f'      {missing_new_histories_states[0].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
+            LOGGER.debug(f'      {missing_new_histories_states[-1].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
 
             histories[column], constant_attributes[column] = history.states_to_histories(
                 self.hass,
                 column,
                 missing_new_histories_states)
         if histories == {}:
-            raise RuntimeError('No missing history data to upload')
+            raise RuntimeError('Should not have gotten here! No missing history data to upload')
         dynamo_data = history.histories_to_dynamo_data(
             self.hass,
             histories,
@@ -442,14 +472,14 @@ class LambdaUpdateHandler:
         Calls lambda if new heating profile is needed
         Otherwise, slowly uploads historical data
         """
-        london_time_now = datetime.now(self.london_tz)
+        london_time_now = datetime.now(tz=timezone.utc)
         # This probably won't result in a smooth transition
         if self.expire_time - london_time_now < timedelta(hours=0) or self.manual_update:
             await self.call_lambda(lambda_args)
         else:
             if self.history_upload_complete is False:
                 await self.upload_old_history()
-        return self.get_closest_time()
+        return self.get_closest_time(lambda_args)
 
     async def update_dynamo_dates(self):
         """Call the lambda function and get the oldest and newest dates in dynamodb."""
@@ -464,23 +494,29 @@ class LambdaUpdateHandler:
             heat_pump_power_entity_id=self.heat_pump_power_entity_id,
             external_temp_entity_id=self.external_temp_entity_id)
 
-    def is_new_data_missing_from_dynamo(self):
-        """Is there any new data that needs to be uploaded.
+    def entities_with_data_missing_from_dynamo(self):
+        """Return entities with new data that needs to be uploaded.
 
         If there is data in HA histories for active_entity_ids that is newer than what is in dynamo,
-        return True.
+        return those entities.
         """
+        entities_missing = []
+        print('---entities_with_data_missing_from_dynamo---')
         for active_entity_id in self.active_entity_ids:
             column = self.id_to_column_name_lookup[active_entity_id]
             if self.dynamo_newest_dates[column] is None:
                 # First run, therefore data is missing
                 LOGGER.debug(f'First run, upload ({const.HISTORY_DAYS}) days of history...\n')
-                return True
+                entities_missing.append(active_entity_id)
+                continue
             if self.dynamo_newest_dates[column] < self.ha_newest_dates[column]:
                 LOGGER.debug(f'self.dynamo_newest_dates[{column}]: {self.dynamo_newest_dates[column]}')
                 LOGGER.debug(f'self.ha_newest_dates[{column}]: {self.ha_newest_dates[column]}')
-                return True
-        return False
+                print(f'  column: {column}')
+                print(f'  dynamo {self.dynamo_newest_dates[column]} is older than local {self.ha_newest_dates[column]}')
+                entities_missing.append(active_entity_id)
+        return entities_missing
+        #return False
 
     async def call_lambda(self, lambda_args):
         """Fetch heating profile from AWS Lambda.
@@ -493,23 +529,21 @@ class LambdaUpdateHandler:
         count = 0
         await self.update_dynamo_dates()
         await self.update_ha_dates()
-        while self.is_new_data_missing_from_dynamo():
+        while missing_entities := self.entities_with_data_missing_from_dynamo():
             count += 1
             LOGGER.debug(f'Updating dynamo with NEW data: round ({count})')
-            await self.upload_new_history()
+            await self.upload_new_history(missing_entities)
         LOGGER.debug('Upload of new history complete\n')
 
         self.lambda_results = await self.client.async_get_profile(lambda_args)
 
-        time_str = self.lambda_results[const.LAMBDA_OPTIMISED_DEMAND][-1]['x']
-        self.expire_time = datetime.strptime(time_str, '%Y-%m-%d %H:%M')
-        self.expire_time = self.expire_time.replace(tzinfo=self.london_tz)
+        self.expire_time = self.lambda_results[const.LAMBDA_TIMESTAMP][-1]
         # The backend will currently only update upon a new day. FIX!
         self.expire_time = self.expire_time + timedelta(hours=1, minutes=30)
         LOGGER.debug(f'---------- self.expire_time: {self.expire_time}')
         self.manual_update = False
 
-    def get_closest_time(self):
+    def get_closest_time(self, lambda_args):
         """Get the closest matching time to now from the lambda data set provided."""
         time_based_keys = [
             const.LAMBDA_BASE_DEMAND,
@@ -522,28 +556,36 @@ class LambdaUpdateHandler:
             const.LAMBDA_OPTIMISED_COST,
             const.LAMBDA_PROJECTED_PERCENT_SAVINGS]
 
-        # Convert to dictionary where time is the key
+        # Convert lists to {datetime: list_element}
         my_data = {}
         for key in time_based_keys:
-            my_data[key] = {i['x']: i['y'] for i in self.lambda_results[key]}
-            for key in non_time_based_keys:
-                my_data[key] = self.lambda_results[key]
+            my_data[key] = {
+                self.lambda_results[const.LAMBDA_TIMESTAMP][i]: self.lambda_results[key][i]
+                    for i in range(len(self.lambda_results[key]))}
+        for key in non_time_based_keys:
+            my_data[key] = self.lambda_results[key]
 
-        # Convert time to dattime format
-        times_str: list[str] = list(my_data['base_demand'].keys())
-        times = [datetime.strptime(d, '%Y-%m-%d %H:%M') for d in times_str]
-        now = datetime.now()
-        absolute_difference = [abs(getattr(t-now, 'total_seconds')()) for t in times]
-        min_idx = absolute_difference.index(min(absolute_difference))
-        closest_time = times_str[min_idx]
+        # Get closet datetime that is in the past
+        datetime_np = np.asarray(self.lambda_results[const.LAMBDA_TIMESTAMP])
+        filtered = datetime_np[datetime_np < datetime.now(tz=timezone.utc)]
+        closest_past_date = filtered.max()
 
         out = {}
         for key in time_based_keys:
-            out[key] = my_data[key][closest_time]
+            out[key] = my_data[key][closest_past_date]
 
         for key in non_time_based_keys:
             out[key] = my_data[key]
+
+        if lambda_args[const.LAMBDA_OUTSIDE_RANGE]:
+            # We're outside of the temp range so simply set the set point to whatever the user has
+            # requested
+            out[const.LAMBDA_TEMP_CONTROLS] = lambda_args[const.LAMBDA_SET_POINT]
+            self.outside_range_flag = True
+            LOGGER.debug(f'initial_internal_temp({lambda_args[const.LAMBDA_INITIAL_INTERNAL_TEMP]}) is outside of temp_range({lambda_args[const.LAMBDA_TEMP_RANGE]}) of the internal_temp({out[const.LAMBDA_TEMP]}) - setting to set_point({lambda_args[const.LAMBDA_SET_POINT]})')
+        elif self.outside_range_flag:
+            # We have just entered the temp_range! The optimisation can now be run
+            LOGGER.debug('Temperature range reached')
+            self.manual_update = True
+            self.outside_range_flag = False
         return out
-
-
-
