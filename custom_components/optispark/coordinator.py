@@ -56,6 +56,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         )
         self._postcode = postcode if postcode is not None else 'AB11 6LU'
         self._tariff = tariff
+        user_hash = 'debug_hash'
         self._user_hash = user_hash
         self._climate_entity_id = climate_entity_id
         self._heat_pump_power_entity_id = heat_pump_power_entity_id
@@ -319,6 +320,7 @@ class LambdaUpdateHandler:
             climate_entity_id: const.DATABASE_COLUMN_SENSOR_CLIMATE_ENTITY,
             heat_pump_power_entity_id: const.DATABASE_COLUMN_SENSOR_HEAT_PUMP_POWER,
             external_temp_entity_id: const.DATABASE_COLUMN_SENSOR_EXTERNAL_TEMPERATURE}
+        LOGGER.debug(f'{self.user_hash = }')
         # Entity ids will be None if they are optional and not enabled
         self.active_entity_ids = []
         for entity_id in [climate_entity_id, heat_pump_power_entity_id, external_temp_entity_id]:
@@ -336,9 +338,6 @@ class LambdaUpdateHandler:
     def get_missing_old_histories_states(self, history_states, column):
         """Get states that are older than anything in dynamo."""
         dynamo_date = self.dynamo_oldest_dates[column]
-        if dynamo_date is None:
-            # No data in dynamo
-            dynamo_date = datetime(3000, 1)  # Everything will be old
         idx_bound = self.get_missing_histories_boundary(
             history_states,
             dynamo_date)

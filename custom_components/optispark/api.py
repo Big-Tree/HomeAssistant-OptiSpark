@@ -95,6 +95,8 @@ class OptisparkApiClient:
     def datetime_set_utc(self, d: dict[str, datetime]):
         """Set the timezone of the datetime values to UTC."""
         for key in d:
+            if d[key] is None:
+                continue
             d[key] = d[key].replace(tzinfo=timezone.utc)
         return d
 
