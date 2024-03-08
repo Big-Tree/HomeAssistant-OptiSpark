@@ -17,8 +17,7 @@ from homeassistant.helpers.device_registry import DeviceRegistry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import device_registry
 from homeassistant.helpers import template
-from datetime import datetime, timedelta
-import pytz
+from datetime import datetime, timedelta, timezone
 import json
 from .const import LOGGER
 from . import const
@@ -206,8 +205,8 @@ def power_history(_hass, state_changes):
 
 async def get_state_changes(hass, entity_id, history_days):
     """History of state changes for entity_id."""
-    start_time = pytz.UTC.localize(datetime.utcnow() - timedelta(days=history_days))
-    end_time = pytz.UTC.localize(datetime.utcnow())
+    start_time = datetime.now(tz=timezone.utc) - timedelta(days=history_days)
+    end_time = datetime.now(tz=timezone.utc)
     filters = None
     include_start_time_state = False
     significant_changes_only = False
@@ -234,8 +233,8 @@ async def get_state_changes(hass, entity_id, history_days):
 
 async def get_state_changes_period(hass, entity_id, history_days):
     """Trying out a different history function."""
-    start_time = pytz.UTC.localize(datetime.utcnow() - timedelta(days=history_days))
-    end_time = pytz.UTC.localize(datetime.utcnow())
+    start_time = datetime.now(tz=timezone.utc) - timedelta(days=history_days)
+    end_time = datetime.now(tz=timezone.utc)
     no_attributes = False
     descending = False
     limit = 99999
@@ -340,6 +339,6 @@ async def get_earliest_and_latest_data_dates(hass, climate_entity_id, heat_pump_
             LOGGER.debug(f'({entity_id_to_column_name[entity_id]}) entity missing, skipping...')
             continue
         state_changes = await get_state_changes(hass, entity_id, const.DYNAMO_HISTORY_DAYS)
-        earliest_dates[entity_id_to_column_name[entity_id]] = state_changes[0].last_updated.replace(tzinfo=None)
-        latest_dates[entity_id_to_column_name[entity_id]] = state_changes[-1].last_updated.replace(tzinfo=None)
+        earliest_dates[entity_id_to_column_name[entity_id]] = state_changes[0].last_updated
+        latest_dates[entity_id_to_column_name[entity_id]] = state_changes[-1].last_updated
     return earliest_dates, latest_dates

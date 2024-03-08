@@ -7,7 +7,7 @@ import socket
 import aiohttp
 import async_timeout
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 import pickle
 import gzip
 import base64
@@ -92,6 +92,12 @@ class OptisparkApiClient:
         """Sample API Client."""
         self._session = session
 
+    def datetime_set_utc(self, d: dict[str, datetime]):
+        """Set the timezone of the datetime values to UTC."""
+        for key in d:
+            d[key] = d[key].replace(tzinfo=timezone.utc)
+        return d
+
     async def upload_history(self, dynamo_data):
         """Upload historical data to dynamoDB without calculating heat pump profile."""
         lambda_url = 'https://lhyj2mknjfmatuwzkxn4uuczrq0fbsbd.lambda-url.eu-west-2.on.aws/'
@@ -102,7 +108,9 @@ class OptisparkApiClient:
             url=lambda_url,
             data=payload,
         )
-        return extra['oldest_dates'], extra['newest_dates']
+        oldest_dates = self.datetime_set_utc(extra['oldest_dates'])
+        newest_dates = self.datetime_set_utc(extra['newest_dates'])
+        return oldest_dates, newest_dates
 
     async def get_data_dates(self, dynamo_data: dict):
         """Call lambda and only get the newest and oldest dates in dynamo.
@@ -117,7 +125,10 @@ class OptisparkApiClient:
             url=lambda_url,
             data=payload,
         )
-        return extra['oldest_dates'], extra['newest_dates']
+        oldest_dates = self.datetime_set_utc(extra['oldest_dates'])
+        newest_dates = self.datetime_set_utc(extra['newest_dates'])
+        
+        return oldest_dates, newest_dates
 
     async def async_get_profile(self, lambda_args: dict):
         """Get heat pump profile only."""

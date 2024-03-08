@@ -328,10 +328,10 @@ class LambdaUpdateHandler:
     def get_missing_histories_boundary(self, history_states, dynamo_date):
         """Get index where history_state matches dynamo_date."""
         for idx, datum in enumerate(history_states):
-            if datum.last_updated.replace(tzinfo=None) >= dynamo_date:
+            if datum.last_updated >= dynamo_date:
                 idx_bound = idx
                 return idx_bound
-        return idx_bound
+        return idx_bound  # type: ignore
 
     def get_missing_old_histories_states(self, history_states, column):
         """Get states that are older than anything in dynamo."""
@@ -349,7 +349,7 @@ class LambdaUpdateHandler:
         dynamo_date = self.dynamo_newest_dates[column]
         if dynamo_date is None:
             # No data in dynamo - upload first x days
-            dynamo_date = datetime.now() - timedelta(days=const.HISTORY_DAYS)
+            dynamo_date = datetime.now(tz=timezone.utc) - timedelta(days=const.HISTORY_DAYS)
         idx_bound = self.get_missing_histories_boundary(
             history_states,
             dynamo_date)
@@ -472,9 +472,9 @@ class LambdaUpdateHandler:
         Calls lambda if new heating profile is needed
         Otherwise, slowly uploads historical data
         """
-        london_time_now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=timezone.utc)
         # This probably won't result in a smooth transition
-        if self.expire_time - london_time_now < timedelta(hours=0) or self.manual_update:
+        if self.expire_time - now < timedelta(hours=0) or self.manual_update:
             await self.call_lambda(lambda_args)
         else:
             if self.history_upload_complete is False:
