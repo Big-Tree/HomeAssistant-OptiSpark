@@ -127,7 +127,7 @@ class OptisparkApiClient:
         )
         oldest_dates = self.datetime_set_utc(extra['oldest_dates'])
         newest_dates = self.datetime_set_utc(extra['newest_dates'])
-        
+
         return oldest_dates, newest_dates
 
     async def async_get_profile(self, lambda_args: dict):

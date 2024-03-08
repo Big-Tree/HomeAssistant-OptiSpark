@@ -374,16 +374,16 @@ class LambdaUpdateHandler:
                 self.hass,
                 active_entity_id,
                 days)
-            print(f'---------- days: {days} ----------')
-            print(f'  history_states[0]: {history_states[0].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
-            print(f'  history_states[-1]: {history_states[-1].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
+            LOGGER.debug(f'---------- days: {days} ----------')
+            LOGGER.debug(f'  history_states[0]: {history_states[0].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
+            LOGGER.debug(f'  history_states[-1]: {history_states[-1].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
 
             history_states = await history.get_state_changes_period(
                 self.hass,
                 active_entity_id,
                 days)
-            print(f'  history_states[0]: {history_states[0].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
-            print(f'  history_states[-1]: {history_states[-1].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
+            LOGGER.debug(f'  history_states[0]: {history_states[0].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
+            LOGGER.debug(f'  history_states[-1]: {history_states[-1].last_updated.strftime("%Y-%m-%d %H:%M:%S")}')
 
         for active_entity_id in missing_entities:
             column = self.id_to_column_name_lookup[active_entity_id]
@@ -501,7 +501,7 @@ class LambdaUpdateHandler:
         return those entities.
         """
         entities_missing = []
-        print('---entities_with_data_missing_from_dynamo---')
+        LOGGER.debug('---entities_with_data_missing_from_dynamo---')
         for active_entity_id in self.active_entity_ids:
             column = self.id_to_column_name_lookup[active_entity_id]
             if self.dynamo_newest_dates[column] is None:
@@ -512,8 +512,8 @@ class LambdaUpdateHandler:
             if self.dynamo_newest_dates[column] < self.ha_newest_dates[column]:
                 LOGGER.debug(f'self.dynamo_newest_dates[{column}]: {self.dynamo_newest_dates[column]}')
                 LOGGER.debug(f'self.ha_newest_dates[{column}]: {self.ha_newest_dates[column]}')
-                print(f'  column: {column}')
-                print(f'  dynamo {self.dynamo_newest_dates[column]} is older than local {self.ha_newest_dates[column]}')
+                LOGGER.debug(f'  column: {column}')
+                LOGGER.debug(f'  dynamo {self.dynamo_newest_dates[column]} is older than local {self.ha_newest_dates[column]}')
                 entities_missing.append(active_entity_id)
         return entities_missing
         #return False
