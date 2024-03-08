@@ -56,7 +56,7 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         )
         self._postcode = postcode if postcode is not None else 'AB11 6LU'
         self._tariff = tariff
-        user_hash = 'debug_hash'
+        #user_hash = 'debug_hash'
         self._user_hash = user_hash
         self._climate_entity_id = climate_entity_id
         self._heat_pump_power_entity_id = heat_pump_power_entity_id
