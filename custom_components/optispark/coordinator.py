@@ -69,7 +69,8 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             const.LAMBDA_POSTCODE: self.postcode,
             const.LAMBDA_USER_HASH: user_hash,
             const.LAMBDA_INITIAL_INTERNAL_TEMP: None,
-            const.LAMBDA_OUTSIDE_RANGE: False
+            const.LAMBDA_OUTSIDE_RANGE: False,
+            const.LAMBDA_HOME_ASSISTANT_VERSION: const.VERSION
         }
         self._lambda_update_handler = LambdaUpdateHandler(
             hass=self.hass,

@@ -5,18 +5,19 @@ LOGGER: Logger = getLogger(__package__)
 
 NAME = "Optispark"
 DOMAIN = "optispark"
-VERSION = "0.2.2"
+VERSION = "0.2.3"
 ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
 
 LAMBDA_TEMP = 'temps'
 LAMBDA_TEMP_CONTROLS = 'temps'
-LAMBDA_PRICE = 'prices'
+LAMBDA_PRICE = 'electricity_price'
 LAMBDA_OPTIMISED_DEMAND = 'optimised_demand'
 LAMBDA_BASE_DEMAND = 'base_demand'
 LAMBDA_TIMESTAMP = 'timestamp'
 LAMBDA_BASE_COST = 'base_cost'
 LAMBDA_OPTIMISED_COST = 'optimised_cost'
 LAMBDA_PROJECTED_PERCENT_SAVINGS = 'projected_percent_savings'
+LAMBDA_HOME_ASSISTANT_VERSION = 'home_assistant_version'
 # Lambda parameters
 LAMBDA_SET_POINT = 'temp_set_point'
 LAMBDA_TEMP_RANGE = 'temp_range'
