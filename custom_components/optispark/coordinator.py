@@ -548,7 +548,6 @@ class LambdaUpdateHandler:
         time_based_keys = [
             const.LAMBDA_BASE_DEMAND,
             const.LAMBDA_PRICE,
-            const.LAMBDA_TEMP,
             const.LAMBDA_TEMP_CONTROLS,
             const.LAMBDA_OPTIMISED_DEMAND]
         non_time_based_keys = [
