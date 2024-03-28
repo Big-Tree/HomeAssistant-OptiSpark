@@ -53,7 +53,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
                 key="target_house_temp",
                 name="Target House Temp",
                 icon="mdi:home-thermometer"),
-            lambda_measurement=const.LAMBDA_TEMP,
+            lambda_measurement=const.LAMBDA_TEMP_CONTROLS,
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement='°C',
             suggested_display_precision=1

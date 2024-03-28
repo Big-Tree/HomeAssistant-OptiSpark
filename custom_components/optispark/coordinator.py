@@ -581,7 +581,7 @@ class LambdaUpdateHandler:
             # requested
             out[const.LAMBDA_TEMP_CONTROLS] = lambda_args[const.LAMBDA_SET_POINT]
             self.outside_range_flag = True
-            LOGGER.debug(f'initial_internal_temp({lambda_args[const.LAMBDA_INITIAL_INTERNAL_TEMP]}) is outside of temp_range({lambda_args[const.LAMBDA_TEMP_RANGE]}) of the internal_temp({out[const.LAMBDA_TEMP]}) - setting to set_point({lambda_args[const.LAMBDA_SET_POINT]})')
+            LOGGER.debug(f'initial_internal_temp({lambda_args[const.LAMBDA_INITIAL_INTERNAL_TEMP]}) is outside of temp_range({lambda_args[const.LAMBDA_TEMP_RANGE]}) of the internal_temp({out[const.LAMBDA_TEMP_CONTROLS]}) - setting to set_point({lambda_args[const.LAMBDA_SET_POINT]})')
         elif self.outside_range_flag:
             # We have just entered the temp_range! The optimisation can now be run
             LOGGER.debug('Temperature range reached')
