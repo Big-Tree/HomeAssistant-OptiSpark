@@ -175,19 +175,19 @@ class OptisparkApiClient:
         self,
         method: str,
         url: str,
-        data: dict | None = None,
+        data: dict,
     ):
         """Call the Lambda function."""
         try:
             if 'dynamo_data' in data:
                 data['dynamo_data'] = floats_to_decimal(data['dynamo_data'])
-            data = self.json_serialisable(data)
+            data_serialised = self.json_serialisable(data)
 
             async with async_timeout.timeout(40):
                 response = await self._session.request(
                     method=method,
                     url=url,
-                    json=data,
+                    json=data_serialised,
                 )
                 if response.status in (401, 403):
                     raise OptisparkApiClientAuthenticationError(

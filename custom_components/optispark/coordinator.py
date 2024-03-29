@@ -10,7 +10,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
-from homeassistant.components.climate import HVACMode
+from homeassistant.components.climate import ClimateEntityFeature
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .api import (
@@ -136,7 +136,8 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
             if self.heat_pump_target_temperature == temp:
                 return
             LOGGER.debug('Change in target temperature!')
-            if climate_entity.hvac_mode == HVACMode.HEAT_COOL:
+            supports_target_temperature_range = climate_entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE_RANGE == ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+            if supports_target_temperature_range:
                 await climate_entity.async_set_temperature(
                     target_temp_low=self.convert_climate_from_celcius(climate_entity, temp),
                     target_temp_high=climate_entity.target_temperature_high)
@@ -209,11 +210,12 @@ class OptisparkDataUpdateCoordinator(DataUpdateCoordinator):
         Assumes that the heat pump is being used for heating.
         """
         climate_entity = get_entity(self.hass, self._climate_entity_id)
-        match climate_entity.hvac_mode:
-            case HVACMode.HEAT_COOL:
-                temperature = climate_entity.target_temperature_low
-            case _:
-                temperature = climate_entity.target_temperature
+        supports_target_temperature_range = climate_entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE_RANGE == ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+        if supports_target_temperature_range:
+            temperature = climate_entity.target_temperature_low
+        else:
+            temperature = climate_entity.target_temperature
+
         return temperature
 
     @property
