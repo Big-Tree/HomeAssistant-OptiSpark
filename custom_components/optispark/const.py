@@ -5,7 +5,7 @@ LOGGER: Logger = getLogger(__package__)
 
 NAME = "Optispark"
 DOMAIN = "optispark"
-VERSION = "0.2.5"
+VERSION = "0.2.6"
 ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
 
 LAMBDA_TEMP_CONTROLS = 'temp_controls'
@@ -24,6 +24,7 @@ LAMBDA_POSTCODE = 'postcode'
 LAMBDA_USER_HASH = 'user_hash'
 LAMBDA_INITIAL_INTERNAL_TEMP = 'initial_internal_temp'
 LAMBDA_OUTSIDE_RANGE = 'outside_range'
+LAMBDA_HEAT_PUMP_MODE_RAW = 'heat_pump_mode_raw'
 
 HISTORY_DAYS = 28  # the number of days initially required by our algorithm
 DYNAMO_HISTORY_DAYS = 365*2

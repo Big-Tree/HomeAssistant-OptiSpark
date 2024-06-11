@@ -183,7 +183,7 @@ class OptisparkApiClient:
                 data['dynamo_data'] = floats_to_decimal(data['dynamo_data'])
             data_serialised = self.json_serialisable(data)
 
-            async with async_timeout.timeout(40):
+            async with async_timeout.timeout(120):
                 response = await self._session.request(
                     method=method,
                     url=url,
