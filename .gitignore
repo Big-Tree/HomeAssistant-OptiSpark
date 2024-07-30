@@ -18,3 +18,7 @@ config/*
 
 homeassistant
 Session.vim
+
+# IntelliJ
+
+.idea

@@ -14,14 +14,16 @@
                     "country": "Country",
                     "tariff": "Electricity tariff",
                     "username": "Username",
+                    "address": "Address",
                     "postcode": "Postcode",
+                    "city": "City",
                     "climate_entity_id": "Heat pump",
                     "heat_pump_power_entity_id": "Power usage of heat pump",
                     "external_temp_entity_id": "(Optional) External house temperature"
                 }
             },
             "accept":{
-                "description": "The following information is needed to calculate the optimised heat pump profile:\n  - Heat pump power usage\n  - Temperature data\n - Postcode (for weather and electricity price data)",
+                "description": "The following information is needed to calculate the optimised heat pump profile:\n  - Heat pump power usage\n  - Temperature data\n - Address & Postcode (for weather and electricity price data)",
                 "data": {
                     "accept_agreement": ""
                 }

@@ -7,13 +7,12 @@ from homeassistant.components.climate import (
     ClimateEntityFeature,
     HVACMode,
 )
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.const import UnitOfTemperature
 
 from . import const
 from .coordinator import OptisparkDataUpdateCoordinator
+from .domain.thermostat.thermostat_info import ThermostatInfo
 from .entity import OptisparkEntity
-
-#from .const import LOGGER
 
 ENTITY_DESCRIPTIONS = (
     ClimateEntityDescription(
@@ -26,11 +25,22 @@ ENTITY_DESCRIPTIONS = (
 
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the climate platform."""
-    coordinator = hass.data[const.DOMAIN][entry.entry_id]
+    coordinator: OptisparkDataUpdateCoordinator = hass.data[const.DOMAIN][entry.entry_id]
+    thermostat_info: ThermostatInfo = await coordinator.fetch_thermostat_info()
+    target_temp = 20
+    if thermostat_info is not None:
+        if thermostat_info.hvac_mode == HVACMode.COOL and thermostat_info.target_temp_low:
+            target_temp = thermostat_info.target_temp_low
+        elif thermostat_info.hvac_mode == HVACMode.HEAT and thermostat_info.target_temp_high:
+            target_temp = thermostat_info.target_temp_high
+        elif thermostat_info.hvac_mode == HVACMode.HEAT_COOL:
+            target_temp = thermostat_info.target_temp_high
+
     async_add_devices(
         OptisparkClimate(
             coordinator=coordinator,
             entity_description=entity_description,
+            target_temp=target_temp
         )
         for entity_description in ENTITY_DESCRIPTIONS
     )
@@ -40,14 +50,15 @@ class OptisparkClimate(OptisparkEntity, ClimateEntity):
     """Optispark climate class."""
 
     def __init__(
-        self,
-        coordinator: OptisparkDataUpdateCoordinator,
-        entity_description: ClimateEntityDescription,
+            self,
+            coordinator: OptisparkDataUpdateCoordinator,
+            entity_description: ClimateEntityDescription,
+            target_temp: float,
     ) -> None:
         """Initialize the sensor class."""
         super().__init__(coordinator)
         self.entity_description = entity_description
-        self._target_temperature = 20
+        self._target_temperature = target_temp if target_temp else 20
         self._target_temperature_high = 25
         self._target_temperature_low = 20
         self._hvac_mode = HVACMode.HEAT
@@ -61,9 +72,9 @@ class OptisparkClimate(OptisparkEntity, ClimateEntity):
     async def async_set_temperature(self, **kwargs):
         """Utilised when the heat pump is in either heat or cooling only mode."""
         self._target_temperature = kwargs['temperature']
-
         lambda_args = self.coordinator.lambda_args
         lambda_args[const.LAMBDA_SET_POINT] = self._target_temperature
+        lambda_args[const.LAMBDA_TEMP_CHANGED] = True
         await self.coordinator.async_set_lambda_args(lambda_args)
 
     @property
@@ -86,22 +97,22 @@ class OptisparkClimate(OptisparkEntity, ClimateEntity):
         match 'heat':
             case 'heat':
                 return [
-                    #HVACMode.OFF,
+                    # HVACMode.OFF,
                     HVACMode.HEAT,
-                    #HVACMode.COOL,
-                    #HVACMode.HEAT_COOL,
-                    #HVACMode.AUTO,
-                    #HVACMode.DRY,
-                    #HVACMode.FAN_ONLY
+                    # HVACMode.COOL,
+                    # HVACMode.HEAT_COOL,
+                    # HVACMode.AUTO,
+                    # HVACMode.DRY,
+                    # HVACMode.FAN_ONLY
                 ]
             case 'cool':
                 return [
                     HVACMode.OFF,
-                    #HVACMode.HEAT,
+                    # HVACMode.HEAT,
                     HVACMode.COOL,
-                    #HVACMode.HEAT_COOL,
-                    #HVACMode.AUTO,
-                    #HVACMode.DRY,
+                    # HVACMode.HEAT_COOL,
+                    # HVACMode.AUTO,
+                    # HVACMode.DRY,
                     HVACMode.FAN_ONLY]
             case 'heat_cool':
                 return [
@@ -134,7 +145,7 @@ class OptisparkClimate(OptisparkEntity, ClimateEntity):
         The front end of homeassistant deals with unit conversion, it just needs to know which
         units we are working with.
         """
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def target_temperature(self) -> float:
@@ -171,8 +182,7 @@ class OptisparkClimate(OptisparkEntity, ClimateEntity):
         """Minimum temperature the heat pump can be set to."""
         return 8
 
-    #@property
-    #def unique_id(self):
+    # @property
+    # def unique_id(self):
     #    """Return a unique ID."""
     #    return 'debug_heat_pump_id'
-
