@@ -1876,7 +1876,7 @@ pymodbus==3.5.4
 pymonoprice==0.4
 
 # homeassistant.components.msteams
-pymsteams==0.1.12
+pymsteams==0.2.2
 
 # homeassistant.components.mysensors
 pymysensors==0.24.0
